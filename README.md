@@ -1,0 +1,2 @@
+# NEXUS
+spintronic simulator environment 
