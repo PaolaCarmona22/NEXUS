@@ -73,21 +73,21 @@ def render_module(name, status):
         else:
             st.markdown(f"<button class='btn-status'>{status}</button>", unsafe_allow_html=True)
 
-# --- Módulos ---
-with st.expander("Spin-Orbit Physics", expanded=True):
+# --- Módulos (Corregidos con expanded=False) ---
+with st.expander("Spin-Orbit Physics", expanded=False):
     render_module("Rashba Semiconductor Ring", "Available")
     render_module("Rashba Interaction", "Research Roadmap")
     render_module("Dresselhaus Interaction", "Research Roadmap")
     render_module("Zeeman Splitting", "Research Roadmap")
     render_module("Aharonov-Bohm Effects", "Research Roadmap")
 
-with st.expander("Spin Transport", expanded=True):
+with st.expander("Spin Transport", expanded=False):
     render_module("Spin Polarization", "Research Roadmap")
     render_module("Spin Currents", "Research Roadmap")
     render_module("Spin Filtering", "Research Roadmap")
     render_module("Spin Injection", "Research Roadmap")
 
-with st.expander("Topological Systems", expanded=True):
+with st.expander("Topological Systems", expanded=False):
     render_module("Topological Insulators", "Future Development")
     render_module("Edge-state Transport", "Future Development")
     render_module("Quantum Spin Hall Systems", "Future Development")
