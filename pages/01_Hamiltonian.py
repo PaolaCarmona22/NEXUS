@@ -3,7 +3,7 @@ import streamlit as st
 # --- Configuración de Página ---
 st.set_page_config(page_title="NEXUS – Hamiltonian Builder", layout="wide")
 
-# --- CSS DEFINITIVO: Un solo fondo para el contenedor con borde ---
+# --- CSS DEFINITIVO: Contenedores Limpios con Franja Azul Decorativa ---
 st.markdown("""
 <style>
     /* Ocultar elementos nativos de Streamlit */
@@ -42,16 +42,40 @@ st.markdown("""
         border: 1px solid #00d4ff;
     }
     
-    /* FORZAR CONTENEDORES NATIVOS A SER BLANCOS Y LIMPIOS (SIN REPETICIONES) */
+    /* CONFIGURACIÓN DE RECUADROS BLANCOS UNIFICADOS */
     [data-testid="stContainer"] {
         background-color: white !important;
         border: 1px solid #e6e9ef !important;
-        border-radius: 6px !important;
+        border-radius: 4px !important;
         padding: 24px !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+
+    /* FRANJA DECORATIVA PARA LA COLUMNA IZQUIERDA (Constructor) */
+    [data-testid="stColumn"]:nth-of-type(1) [data-testid="stContainer"]::before {
+        content: "" !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 5px !important;
+        background-color: #0056b3 !important; /* Azul Corporativo */
+    }
+
+    /* FRANJA DECORATIVA PARA LA COLUMNA DERECHA (Insights) */
+    [data-testid="stColumn"]:nth-of-type(2) [data-testid="stContainer"]::before {
+        content: "" !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 5px !important;
+        background-color: #00d4ff !important; /* Cian Brillante */
     }
     
-    /* Títulos de sección elegantes */
+    /* Títulos de sección */
     .card-title-inline {
         color: #001f3f;
         font-size: 14px;
@@ -61,7 +85,7 @@ st.markdown("""
         border-bottom: 1px solid #f0f2f6;
         padding-bottom: 10px;
         margin-bottom: 20px;
-        margin-top: 0px;
+        margin-top: 5px; /* Pequeño margen para no encimarse con la franja */
     }
 
     /* Recuadro Gris de la Ecuación */
@@ -126,12 +150,11 @@ col_main, col_side = st.columns([0.73, 0.27])
 # 3. COLUMNA IZQUIERDA: BUILD HAMILTONIAN
 # ==========================================
 with col_main:
-    # Usamos el contenedor nativo con borde, el CSS se encargará de ponerlo blanco completo sin sub-cuadros
     with st.container(border=True):
-        st.markdown("<div class='card-title-inline'>⚙️ Build Hamiltonian</div>", unsafe_allow_html=True)
+        st.markdown("<div class='card-title-inline'> Build Hamiltonian</div>", unsafe_allow_html=True)
         st.markdown("<p style='font-size: 10px; font-weight: 800; color: #6c757d; text-transform: uppercase; margin-top: -10px; margin-bottom: 25px;'>Model Configuration Matrix</p>", unsafe_allow_html=True)
         
-        # Columnas para los parámetros
+        # Parámetros en 3 columnas
         c1, c2, c3 = st.columns(3)
         with c1:
             st.markdown("<p style='font-size: 12px; font-weight: 700; color: #001f3f; margin-bottom: 8px;'>Dimensionality</p>", unsafe_allow_html=True)
@@ -149,7 +172,7 @@ with col_main:
             st.markdown("<p style='font-size: 12px; font-weight: 700; color: #001f3f; margin-bottom: 8px;'>External Fields</p>", unsafe_allow_html=True)
             zeeman = st.checkbox("Magnetic Field / Zeeman", value=False)
 
-        # Lógica matemática dinámica
+        # Lógica de ecuación
         eq = r"\hat{H} = "
         if "1D" in dim_opt:
             eq += r"\frac{\hbar^2 p_\phi^2}{2m^*R^2}"
@@ -161,7 +184,7 @@ with col_main:
             if dresselhaus: eq += r" + \beta_D(\sigma_x k_x - \sigma_y k_y)"
         if zeeman: eq += r" + \frac{1}{2}g\mu_B B_z \sigma_z"
 
-        # Caja Gris del Hamiltoniano de Renderizado
+        # Caja Gris del Hamiltoniano
         st.markdown("<div class='equation-grey-box'><span class='equation-label'>Explicit Hamiltonian (Real-time rendering)</span></div>", unsafe_allow_html=True)
         st.latex(eq)
 
@@ -173,16 +196,16 @@ with col_main:
 # ==========================================
 with col_side:
     with st.container(border=True):
-        st.markdown("<div class='card-title-inline'>💡 Physics Insights</div>", unsafe_allow_html=True)
+        st.markdown("<div class='card-title-inline'> Physics Insights</div>", unsafe_allow_html=True)
         
-        # Sistema
+        # Insights: Sistema
         st.markdown("<p style='font-size: 12px; font-weight: 700; color: #001f3f; margin-bottom: 4px;'>System Representation</p>", unsafe_allow_html=True)
         if "1D" in dim_opt:
             st.markdown("<p style='font-size: 11px; color: #495057; line-height: 1.4; margin-bottom: 18px;'>Modeling a <b>Quantum Ring</b>. Curvature induces a geometric phase and restricts momentum to spatial angular components $p_\phi$.</p>", unsafe_allow_html=True)
         else:
             st.markdown("<p style='font-size: 11px; color: #495057; line-height: 1.4; margin-bottom: 18px;'>Modeling a <b>2D Bulk System</b>. Translation symmetry allows continuous momentum components $\mathbf{k}$ in the interface plane.</p>", unsafe_allow_html=True)
         
-        # Física Activa
+        # Insights: Física Activa
         st.markdown("<p style='font-size: 12px; font-weight: 700; color: #001f3f; margin-bottom: 4px;'>Active Physics</p>", unsafe_allow_html=True)
         if not rashba and not dresselhaus:
             st.markdown("<p style='font-size: 11px; color: #495057; line-height: 1.4; margin-bottom: 18px;'>Spin degeneracy is fully preserved. No spin-orbit splitting active in the band structure.</p>", unsafe_allow_html=True)
@@ -193,7 +216,7 @@ with col_side:
             txt += "</ul>"
             st.markdown(txt, unsafe_allow_html=True)
 
-        # Campo Magnético
+        # Insights: Campos
         if zeeman:
             st.markdown("<p style='font-size: 12px; font-weight: 700; color: #001f3f; margin-bottom: 4px;'>Magnetic Regime</p>", unsafe_allow_html=True)
             st.markdown("<p style='font-size: 11px; color: #495057; line-height: 1.4; margin-bottom: 0;'><b>Zeeman splitting active</b>. Time-reversal symmetry is broken, lifting Kramers degeneracy.</p>", unsafe_allow_html=True)
