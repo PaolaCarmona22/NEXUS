@@ -1,65 +1,69 @@
 import streamlit as st
-import numpy as np
-from src.engine import RashbaRing
 
-# --- Page Config ---
-st.set_page_config(page_title="Hamiltonian - NEXUS", layout="wide")
+# --- Configuración de página ---
+st.set_page_config(page_title="NEXUS – Hamiltonian", layout="wide")
 
-# --- Helper Function for Beautiful LaTeX Matrices ---
-def format_matrix_to_latex(matrix: np.ndarray) -> str:
-    """Convierte una matriz NumPy a un string LaTeX limpio y profesional."""
-    latex_str = r"\begin{pmatrix}"
-    for row in matrix:
-        row_str = []
-        for val in row:
-            real_part = np.real(val)
-            imag_part = np.imag(val)
-            
-            # Formato científico a 2 decimales
-            if abs(imag_part) < 1e-40: 
-                row_str.append(f"{real_part:.2e}")
-            elif abs(real_part) < 1e-40: 
-                row_str.append(f"{imag_part:.2e}i")
-            else:
-                sign = "+" if imag_part >= 0 else "-"
-                row_str.append(f"{real_part:.2e} {sign} {abs(imag_part):.2e}i")
+# --- CSS para limpiar interfaz ---
+st.markdown("""
+<style>
+    [data-testid="stSidebar"] { display: none; }
+    .stApp { background-color: #f8f9fa; }
+    .main-title { color: #001f3f; font-weight: 700; }
+    .card-build { 
+        background: white; padding: 30px; border-radius: 8px; 
+        border: 1px solid #dee2e6; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- Navegación Superior ---
+tabs = st.tabs(["Hamiltonian", "Eigenenergies", "Eigenstates", "States", "Conductance"])
+
+with tabs[0]: # Pestaña del Hamiltoniano
+    
+    # Layout de 3 columnas
+    col_left, col_mid, col_right = st.columns([1, 2, 1])
+    
+    with col_left:
+        st.subheader("System Parameters")
+        st.write("Configuración de variables del sistema.")
+        # Aquí irán tus sliders
+        
+    with col_mid:
+        st.markdown("<h1 class='main-title'>Hamiltonian Formulation</h1>", unsafe_allow_html=True)
+        
+        # --- Fase: Build Hamiltonian ---
+        if 'system_initialized' not in st.session_state:
+            with st.container():
+                st.markdown("<div class='card-build'>", unsafe_allow_html=True)
+                st.subheader("🛠 Build Hamiltonian")
+                st.write("Configure the physical components of your model:")
                 
-        latex_str += " & ".join(row_str) + r" \\ "
-    latex_str += r"\end{pmatrix}"
-    return latex_str
+                # Checkboxes para "construir" la física
+                r_soc = st.checkbox("Rashba Spin-Orbit Coupling", True)
+                z_split = st.checkbox("Zeeman Splitting")
+                mag_flux = st.checkbox("External Magnetic Flux")
+                
+                # Ejemplo de cómo se vería la ecuación dinámica
+                equation = r"H = H_{kin}"
+                if r_soc: equation += r" + H_{Rashba}"
+                if z_split: equation += r" + H_{Zeeman}"
+                
+                st.latex(equation)
+                
+                if st.button("Initialize System & Compute Matrix"):
+                    st.session_state['system_initialized'] = True
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+        
+        # --- Fase: Resultados (Se activará tras el botón) ---
+        else:
+            st.write("### Numerical Representation")
+            st.info("Matriz construida y lista para análisis.")
+            if st.button("Reset Hamiltonian Builder"):
+                del st.session_state['system_initialized']
+                st.rerun()
 
-# --- UI Layout ---
-st.title("Hamiltonian Formulation")
-st.markdown("---")
-
-# Sidebar for Local Parameters
-st.sidebar.header("Quantum State Parameters")
-l_val = st.sidebar.slider("Angular Momentum (l)", -5, 5, 1)
-Phi_val = st.sidebar.slider("Magnetic Flux (Φ/Φ₀)", -2.0, 2.0, 0.0, step=0.1)
-Bz_val = st.sidebar.number_input("Zeeman Splitting (Bz) [J]", value=0.0, format="%.2e")
-
-# Retrieve Global Parameters (with fallbacks if starting directly on this page)
-R = st.session_state.get('R', 25.0) * 1e-9          # Convert nm to m
-m_star = st.session_state.get('m_star', 0.067) * 9.109e-31 # Effective mass in kg
-alpha_R = st.session_state.get('alpha_R', 10.0) * 1e-12    # Rashba param in J*m
-
-# Analytical Equation Section
-st.subheader("Analytical Model")
-st.latex(r"""
-\hat{H}= \frac{\hbar^2}{2m^*R^{2}}\left(-i\frac{\partial }{\partial \phi }+\frac{\Phi }{\Phi_{0}}\right)^2+\frac{1}{2}g\mu_{B}B_{z}\hat{\sigma}_{z}+\frac{\alpha_{R}}{R}\hat{\sigma}_r\left(-i\frac{\partial }{\partial \phi }+\frac{\Phi }{\Phi_{0}}\right)-i\frac{\alpha _R}{2R}\hat{\sigma }_{\phi }
-""")
-
-# Numerical Computation Section
-st.subheader("Numerical Matrix Representation")
-
-try:
-    # Initialize engine and compute
-    ring = RashbaRing(R=R, m_star=m_star, alpha_R=alpha_R)
-    H_matrix = ring.get_hamiltonian(l=l_val, B_z=Bz_val, Phi=Phi_val)
-    
-    # Display beautifully
-    latex_matrix = format_matrix_to_latex(H_matrix)
-    st.latex(r"\hat{H}_{num} = " + latex_matrix)
-    
-except Exception as e:
-    st.error(f"Error computing Hamiltonian: {e}")
+    with col_right:
+        st.subheader("Physical Insight")
+        st.write("El análisis físico aparecerá aquí una vez que el Hamiltoniano esté construido.")
