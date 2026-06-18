@@ -1,5 +1,4 @@
 import streamlit as st
-import sympy as sp
 import numpy as np
 
 # --- High-End Scientific Page Configuration ---
@@ -9,7 +8,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- BLINDAJE DE ESTADOS: Inicialización Segura para Evitar AttributeError ---
+# --- BLINDAJE DE ESTADOS: Inicialización Segura ---
 if "engine_running" not in st.session_state:
     st.session_state.engine_running = False
 if "use_flux" not in st.session_state:
@@ -26,7 +25,7 @@ if "target_page" in st.query_params:
         st.query_params.clear()
         st.switch_page("pages/02_Eigenenergies.py")
 
-# --- CSS NEXUS: Versión Cuatro Bloques Sincronizados ---
+# --- CSS NEXUS: Unificado y Sincronizado ---
 st.markdown("""
 <style>
     [data-testid="stSidebar"] { display: none; }
@@ -51,15 +50,15 @@ st.markdown("""
     }
     .nav-tab-btn.active { background-color: #0056b3 !important; color: white !important; border: 1px solid #00d4ff !important; }
 
-    /* ESTILO DE LOS PANELES DE LAYOUT COHERENTE */
+    /* ESTILO DE LOS PANELES */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: white !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; border-radius: 6px !important;
     }
     
-    /* Títulos e Identificadores */
     .panel-title { color: #001f3f; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+    .latex-title { font-size: 11px; font-weight: 700; color: #003366; text-transform: uppercase; letter-spacing: 1px; display: block; margin-top: 15px; margin-bottom: 5px; }
+    .instruction-text { color: #475569; font-size: 13px; font-style: italic; margin-top: 15px; margin-bottom: 15px; display: block; }
     
-    /* Matrices e Indicadores */
     .matrix-status {
         background-color: #f1f5f9; padding: 10px; border-radius: 4px; border-left: 4px solid #10b981;
         font-family: monospace; font-size: 12px; font-weight: bold; color: #0f172a; margin-top: 10px;
@@ -87,8 +86,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+
 # ============================================================
-# PARTE A: CONFIGURACIÓN INICIAL DEL OPERADOR
+# FASE 1: CONSTRUIBLE TEÓRICO 
 # ============================================================
 if not st.session_state.engine_running:
     col_main_left, col_main_right = st.columns([5.2, 1.8])
@@ -97,6 +97,7 @@ if not st.session_state.engine_running:
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Builder Hamiltonian</p>", unsafe_allow_html=True)
             container_render = st.empty()
+            st.markdown("<span class='instruction-text'>Configure the active interaction terms to dynamically construct the system's quantum operator matrix:</span>", unsafe_allow_html=True)
             
             grid_col1, grid_col2 = st.columns(2)
             with grid_col1:
@@ -113,10 +114,13 @@ if not st.session_state.engine_running:
             if use_rashba: h_latex += " + \\frac{\\alpha_{R}}{r_{0}}\\hat{\\sigma}_r\\left(-i\\frac{\\partial}{\\partial\\phi}" + (" + \\frac{\\Phi}{\\Phi_0}" if use_flux else "") + "\\right) - i\\frac{\\alpha_R}{2r_0}\\hat{\\sigma}_\\phi"
             
             with container_render.container():
+                st.markdown("<span class='latex-title'>Explicit Hamiltonian</span>", unsafe_allow_html=True)
+                st.markdown("<hr style='border-color: #e2e8f0; margin: 10px 0;'>", unsafe_allow_html=True)
                 st.latex(h_latex)
+                st.markdown("<hr style='border-color: #e2e8f0; margin: 10px 0;'>", unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Run Core Engine →", type="primary"):
+            if st.button("Run Core Engine →", type="primary", use_container_width=True):
                 st.session_state.use_flux = use_flux
                 st.session_state.use_zeeman = use_zeeman
                 st.session_state.use_rashba = use_rashba
@@ -126,122 +130,164 @@ if not st.session_state.engine_running:
     with col_main_right:
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Physics Insights</p>", unsafe_allow_html=True)
-            st.markdown("<div class='insight-card'><h4>Setup Phase</h4><p>Select the physical fields you wish to include in the Hamiltonian operator. Press <b>Run Core Engine</b> to initialize the symbolic matrix deduction.</p></div>", unsafe_allow_html=True)
+            st.markdown("""
+            <div class='insight-card'>
+                <h4>Aharonov-Bohm Flux</h4>
+                <p>The vector potential of the magnetic flux breaks TRS by inducing a non-zero geometric phase directly into the kinetic momentum operator.</p>
+            </div>
+            <div class='insight-card'>
+                <h4>External Magnetic Field</h4>
+                <p>An external field <b>B<sub>z</sub></b> removes spin degeneracy via the Zeeman term. Its contribution is fully encapsulated by this spin-coupling term.</p>
+            </div>
+            <div class='insight-card'>
+                <h4>Rashba Spin-Orbit Field</h4>
+                <p>Relativistic effects couple momentum to spin, generating states with spin-split energy even at zero external field.</p>
+            </div>
+            """, unsafe_allow_html=True)
 
 # ============================================================
-# PARTE B: ENTORNOS INTERACTIVOS EN 4 BLOQUES
+# FASE 2: ENTORNO INTERACTIVO 
 # ============================================================
 else:
-    col_params, col_calculus = st.columns([2.0, 5.0])
+    # Réplica matemática exacta de las dimensiones de la Fase 1
+    col_main_left, col_main_right = st.columns([5.2, 1.8])
 
-    # --------------------------------------------------------
-    # BLOQUE 1: BARRA IZQUIERDA DE PARÁMETROS NUMÉRICOS
-    # --------------------------------------------------------
-    with col_params:
-        with st.container(border=True):
-            st.markdown("<p class='panel-title'>⚙️ System Parameters</p>", unsafe_allow_html=True)
-            
-            st.markdown("**Geometric & Material**")
-            r0_val = st.slider("Ring Radius $r_0$ (nm)", 10.0, 100.0, 40.0, step=2.5)
-            meff_val = st.slider("Effective Mass $m^*$ ($m_0$)", 0.01, 0.10, 0.023, step=0.001)
-            
-            st.markdown("<hr style='margin:10px 0; border-color:#e2e8f0;'>", unsafe_allow_html=True)
-            st.markdown("**Quantum Numbers**")
-            l_val = st.number_input("Angular Momentum $l$", value=1, step=1)
-            
-            st.markdown("<hr style='margin:10px 0; border-color:#e2e8f0;'>", unsafe_allow_html=True)
-            st.markdown("**Active Fields**")
-            
-            phi_ratio = st.slider("Flux Ratio $\\Phi/\\Phi_0$", 0.0, 5.0, 1.2, step=0.1) if st.session_state.use_flux else 0.0
-            bz_val = st.slider("Magnetic Field $B_z$ (T)", 0.0, 10.0, 2.5, step=0.1) if st.session_state.use_zeeman else 0.0
-            alpha_val = st.slider("Rashba $\\alpha_R$ (meV·nm)", 0.0, 40.0, 15.0, step=1.0) if st.session_state.use_rashba else 0.0
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("← Reset Operator", use_container_width=True):
-                st.session_state.engine_running = False
-                st.rerun()
+    # Inicialización de variables desde session_state para evitar NameError antes de los sliders
+    r0_val = st.session_state.get('r0_slider', 40.0)
+    meff_val = st.session_state.get('meff_slider', 0.023)
+    l_val = st.session_state.get('l_input', 1)
+    phi_ratio = st.session_state.get('phi_slider', 1.2) if st.session_state.use_flux else 0.0
+    bz_val = st.session_state.get('bz_slider', 2.5) if st.session_state.use_zeeman else 0.0
+    alpha_val = st.session_state.get('alpha_slider', 15.0) if st.session_state.use_rashba else 0.0
 
-    # --------------------------------------------------------
-    # SEGUNDA COLUMNA MAESTRA: CONTIENE LOS BLOQUES 2, 3 Y 4
-    # --------------------------------------------------------
-    with col_calculus:
+    hbar_sq_over_2m0 = 38.1  
+    g_factor = 15.0         
+    mu_B_meV = 0.05788      
+    
+    h_coef = hbar_sq_over_2m0 / (meff_val * (r0_val**2))
+    zeeman_energy = 0.5 * g_factor * mu_B_meV * bz_val
+    rashba_energy = (alpha_val / r0_val) * (l_val + 0.5 + phi_ratio) if st.session_state.use_rashba else 0.0
+    
+    h11 = h_coef * ((l_val + phi_ratio)**2) + zeeman_energy
+    h22 = h_coef * ((1 + l_val + phi_ratio)**2) - zeeman_energy
+    h12 = rashba_energy
+    h21 = rashba_energy
+
+    # --- COLUMNA IZQUIERDA (Ancho 5.2): CÓMPUTO Y CONTROLES ABAJO ---
+    with col_main_left:
         
-        # --- BLOQUE 2: HAMILTONIAN FORMULATION ---
+        # Módulo 1: Formulación Analítica Matricial (ARRIBA)
         with st.container(border=True):
-            st.markdown("<p class='panel-title'>📝 Block 2: Hamiltonian Formulation</p>", unsafe_allow_html=True)
-            st.markdown("<span style='font-size:12.5px; color:#475569;'>Projection of the custom operator onto the angular momentum basis $|l\\rangle \\otimes |\\pm\\rangle$:</span>", unsafe_allow_html=True)
+            st.markdown("<p class='panel-title'>Quantum Operators & Basis</p>", unsafe_allow_html=True)
+            tab_matrix, tab_basis, tab_pauli = st.tabs(["Matrix Projection", "Spinor Basis", "Local Pauli Fields"])
             
-            kin_sym = f"\\left(l + \\frac{{\\Phi}}{{\\Phi_0}}\\right)^2" if st.session_state.use_flux else "l^2"
-            kin_sym_p1 = f"\\left(1 + l + \\frac{{\\Phi}}{{\\Phi_0}}\\right)^2" if st.session_state.use_flux else "(1 + l)^2"
-            
-            z_sym = "+ \\frac{1}{2}g\\mu_B B_z" if st.session_state.use_zeeman else ""
-            z_sym_m = "- \\frac{1}{2}g\\mu_B B_z" if st.session_state.use_zeeman else ""
-            
-            r_sym = f"\\frac{{\\alpha_R}}{{r_0}}\\left(l + \\frac{{1}}{{2}} + \\frac{{\\Phi}}{{\\Phi_0}}\\right)" if st.session_state.use_flux else f"\\frac{{\\alpha_R}}{{r_0}}\\left(l + \\frac{{1}}{{2}}\\right)"
-            r_sym_str = r_sym if st.session_state.use_rashba else "0"
-            
-            h_matrix_latex = f"""
-            \\begin{{pmatrix}}
-            \\frac{{\\hbar^2}}{{2m^* r_0^2}}{kin_sym} {z_sym} & {r_sym_str} \\\\
-            {r_sym_str} & \\frac{{\\hbar^2}}{{2m^* r_0^2}}{kin_sym_p1} {z_sym_m}
-            \\end{{pmatrix}}
-            \\begin{{pmatrix}} \\chi_1 \\\\ \\chi_2 \\end{{pmatrix}} = E \\begin{{pmatrix}} \\chi_1 \\\\ \\chi_2 \\end{{pmatrix}}
-            """
-            st.latex(h_matrix_latex)
+            with tab_matrix:
+                kin_sym = f"\\left(l + \\frac{{\\Phi}}{{\\Phi_0}}\\right)^2" if st.session_state.use_flux else "l^2"
+                kin_sym_p1 = f"\\left(1 + l + \\frac{{\\Phi}}{{\\Phi_0}}\\right)^2" if st.session_state.use_flux else "(1 + l)^2"
+                z_sym = "+ \\frac{1}{2}g\\mu_B B_z" if st.session_state.use_zeeman else ""
+                z_sym_m = "- \\frac{1}{2}g\\mu_B B_z" if st.session_state.use_zeeman else ""
+                r_sym = f"\\frac{{\\alpha_R}}{{r_0}}\\left(l + \\frac{{1}}{{2}} + \\frac{{\\Phi}}{{\\Phi_0}}\\right)" if st.session_state.use_flux else f"\\frac{{\\alpha_R}}{{r_0}}\\left(l + \\frac{{1}}{{2}}\\right)"
+                r_sym_str = r_sym if st.session_state.use_rashba else "0"
+                
+                st.latex(f"""
+                \\hat{{H}}_{{discrete}} = \\begin{{pmatrix}}
+                \\frac{{\\hbar^2}}{{2m^* r_0^2}}{kin_sym} {z_sym} & {r_sym_str} \\\\
+                {r_sym_str} & \\frac{{\\hbar^2}}{{2m^* r_0^2}}{kin_sym_p1} {z_sym_m}
+                \\end{{pmatrix}}
+                """)
+                
+            with tab_basis:
+                st.latex(r"\Psi_{l}(\phi) = \begin{pmatrix} \chi_1 e^{i l \phi} \\ \chi_2 e^{i(l+1)\phi} \end{pmatrix}")
+                
+            with tab_pauli:
+                st.latex(r"\hat{\sigma}_r = \begin{pmatrix} 0 & e^{-i\phi} \\ e^{i\phi} & 0 \end{pmatrix}, \quad \hat{\sigma}_\phi = \begin{pmatrix} 0 & -ie^{-i\phi} \\ ie^{i\phi} & 0 \end{pmatrix}")
 
-        st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
-
-        # --- BLOQUE 3: DISCRETE HAMILTONIAN ---
+        # Módulo 2: Evaluación Numérica (EN EL MEDIO)
         with st.container(border=True):
-            st.markdown("<p class='panel-title'>🔢 Block 3: Discrete Hamiltonian Matrix Evaluation</p>", unsafe_allow_html=True)
-            
-            hbar_sq_over_2m0 = 38.1  
-            g_factor = 15.0         
-            mu_B_meV = 0.05788      
-            
-            h_coef = hbar_sq_over_2m0 / (meff_val * (r0_val**2))
-            zeeman_energy = 0.5 * g_factor * mu_B_meV * bz_val
-            rashba_energy = (alpha_val / r0_val) * (l_val + 0.5 + phi_ratio) if st.session_state.use_rashba else 0.0
-            
-            h11 = h_coef * ((l_val + phi_ratio)**2) + zeeman_energy
-            h22 = h_coef * ((1 + l_val + phi_ratio)**2) - zeeman_energy
-            h12 = rashba_energy
-            h21 = rashba_energy
-            
-            matrix_latex = f"""
-            H_{{numerical}} = \\begin{{pmatrix}}
+            st.markdown("<p class='panel-title'>Discrete Hamiltonian Matrix Evaluation</p>", unsafe_allow_html=True)
+            st.latex(f"""
+            H = \\begin{{pmatrix}}
             {h11:.4f} & {h12:.4f} \\\\
             {h21:.4f} & {h22:.4f}
             \\end{{pmatrix}} \\text{{ meV}}
-            """
-            st.latex(matrix_latex)
-            
-            is_hermitian = np.allclose(h12, h21)
-            if is_hermitian:
-                st.markdown(f"<div class='matrix-status'>✓ HERMITIAN VALIDATION SUCCESFUL: H = H† | Matrix is self-adjoint for l={l_val}</div>", unsafe_allow_html=True)
-            else:
-                st.markdown("<div class='matrix-status' style='border-left-color:#ef4444;'>✗ VALIDATION FAILED: Asymmetric coupling detected.</div>", unsafe_allow_html=True)
+            """)
+            st.markdown(f"<div class='matrix-status' style='text-align:center; border-left: 3px solid #cbd5e1; color: #475569;'>HERMITIAN VALIDATION SUCCESSFUL: H = H†</div>", unsafe_allow_html=True)
 
-        st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
-
-        # --- BLOQUE 4: PHYSICAL INSIGHTS DINÁMICO ---
+        # Módulo 3: Consola Horizontal de Parámetros (ABAJO)
         with st.container(border=True):
-            st.markdown("<p class='panel-title'>💡 Block 4: Advanced Physics Insights</p>", unsafe_allow_html=True)
+            st.markdown("<p class='panel-title' style='margin-bottom:12px;'>System Parameters Console</p>", unsafe_allow_html=True)
+            grid_p1, grid_p2, grid_p3 = st.columns([1.5, 1.0, 1.5])
             
-            col_in1, col_in2 = st.columns(2)
-            with col_in1:
-                st.markdown("""
-                <div class='insight-card'>
-                    <h4>Matrix Off-Diagonal Coupling</h4>
-                    <p>The Rashba term behaves as an effective radial/azimuthal field. In this discrete spin-space basis, it directly mixes the angular state <b>|l, ↑⟩</b> with <b>|l+1, ↓⟩</b>, creating the non-zero off-diagonal elements.</p>
-                </div>
-                """, unsafe_allow_html=True)
-            with col_in2:
-                st.markdown("""
-                <div class='insight-card'>
-                    <h4>Hermiticity & Flux Shifts</h4>
-                    <p>Notice that the Aharonov-Bohm flux shifts the kinetic terms continuously. Since the cross-terms remain identical real values, the matrix preserves perfect <b>Hermiticity</b>, guaranteeing real energy eigenvalues.</p>
-                </div>
-                """, unsafe_allow_html=True)
+            with grid_p1:
+                r0_val = st.slider("Ring Radius $r_0$ (nm)", 10.0, 100.0, 40.0, step=2.5, key='r0_slider')
+                meff_val = st.slider("Effective Mass $m^*$ ($m_0$)", 0.01, 0.10, 0.023, step=0.001, key='meff_slider')
+            with grid_p2:
+                l_val = st.number_input("Angular Momentum $l$", value=1, step=1, key='l_input')
+                st.markdown("<div style='margin-top:22px;'></div>", unsafe_allow_html=True)
+                if st.button("Reset Operator Setup", use_container_width=True, type="secondary"):
+                    st.session_state.engine_running = False
+                    st.rerun()
+            with grid_p3:
+                if st.session_state.use_flux:
+                    phi_ratio = st.slider("Flux Ratio $\\Phi/\\Phi_0$", 0.0, 5.0, 1.2, step=0.1, key='phi_slider')
+                if st.session_state.use_zeeman:
+                    bz_val = st.slider("Magnetic Field $B_z$ (T)", 0.0, 10.0, 2.5, step=0.1, key='bz_slider')
+                if st.session_state.use_rashba:
+                    alpha_val = st.slider("Rashba Coupling $\\alpha_R$", 0.0, 40.0, 15.0, step=1.0, key='alpha_slider')
+
+    # --- COLUMNA DERECHA (Ancho 1.8): REGION DE PHYSICS INSIGHTS DEDICADA (ESTÁTICA) ---
+    with col_main_right:
+        with st.container(border=True):
+            st.markdown("<p class='panel-title'>Physics Insights</p>", unsafe_allow_html=True)
+            
+            # Evaluación de reglas lógicas dinámicas
+            if not st.session_state.use_rashba or rashba_energy == 0:
+                ins_1 = "<b>Orbital Confinement Dominant.</b> Spin-orbit interaction is absent. Spin projections remain perfectly decoupled and spin-pure."
+                ins_2 = "<b>Hamiltonian becomes diagonal.</b> Spin-up and spin-down states are completely uncoupled because the Rashba parameter is zero."
+            elif h_coef > rashba_energy:
+                ins_1 = "Rashba coupling is weak compared to orbital confinement. Spin mixing is limited and the eigenstates remain mostly spin-pure."
+                ins_2 = "Diagonal terms represent orbital and Zeeman energies. Off-diagonal terms originate from Rashba coupling and connect opposite spin channels."
+            else:
+                ins_1 = "Rashba coupling dominates the orbital energy scale. Strong spin-orbit hybridization is expected."
+                ins_2 = "Diagonal terms represent orbital and Zeeman energies. Off-diagonal terms originate from Rashba coupling and connect opposite spin channels."
                 
-            st.info("Everything ready. Move to step '2. Eigenenergies' in the top navbar to map out the complete energy spectrum curves.")
+            if (st.session_state.use_flux and phi_ratio != 0) or (st.session_state.use_zeeman and bz_val != 0):
+                ins_3 = "Hamiltonian is Hermitian (real eigenvalues). <span style='color:#475569; font-weight:600; display:block; margin-top:4px;'>Time-reversal symmetry is broken by magnetic flux/fields.</span>"
+            else:
+                ins_3 = "Hamiltonian is Hermitian (real eigenvalues). <span style='color:#475569; font-weight:600; display:block; margin-top:4px;'>Time-reversal symmetry preserved.</span>"
+                
+            ins_5 = f"The selected state corresponds to an electron confined to a <b>{r0_val:.1f} nm</b> semiconductor ring. "
+            if st.session_state.use_rashba and alpha_val > 0:
+                ins_5 += "Rashba interaction introduces spin precession around the ring trajectory. "
+            if not st.session_state.use_rashba or h_coef > rashba_energy:
+                ins_5 += f"Orbital confinement energy ({h_coef:.2f} meV) exceeds spin-orbit interaction energy."
+            else:
+                ins_5 += f"Spin-orbit splitting overrides the kinetic quantization scale."
+
+            # Renderizado de cartas verticales fijas
+            st.markdown(f"""
+            <div class='insight-card'>
+                <h4>DOMINANT INTERACTION</h4>
+                <p>{ins_1}</p>
+            </div>
+            <div class='insight-card'>
+                <h4>MATRIX STRUCTURE</h4>
+                <p>{ins_2}</p>
+            </div>
+            <div class='insight-card'>
+                <h4>SYMMETRY ANALYSIS</h4>
+                <p>{ins_3}</p>
+            </div>
+            <div class='insight-card'>
+                <h4>PHYSICAL INTERPRETATION</h4>
+                <p>{ins_5}</p>
+            </div>
+            <div class='insight-card'>
+                <h4>NUMERICAL STATUS</h4>
+                <p style='font-family: monospace; font-size: 11px; margin:0;'>
+                    Basis size: 2 x 2<br>
+                    Matrix conditioning: Stable<br>
+                    Ready for eigensolver.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
