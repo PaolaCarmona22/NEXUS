@@ -146,7 +146,7 @@ if not st.session_state.engine_running:
             """, unsafe_allow_html=True)
 
 # ============================================================
-# FASE 2: ENTORNO INTERACTIVO 
+# FASE 2: ENTORNO INTERACTIVO (SIMETRÍA [5.2, 1.8] CON MATRICES DE PAULI COMPLETAS)
 # ============================================================
 else:
     # Réplica matemática exacta de las dimensiones de la Fase 1
@@ -200,7 +200,20 @@ else:
                 st.latex(r"\Psi_{l}(\phi) = \begin{pmatrix} \chi_1 e^{i l \phi} \\ \chi_2 e^{i(l+1)\phi} \end{pmatrix}")
                 
             with tab_pauli:
-                st.latex(r"\hat{\sigma}_r = \begin{pmatrix} 0 & e^{-i\phi} \\ e^{i\phi} & 0 \end{pmatrix}, \quad \hat{\sigma}_\phi = \begin{pmatrix} 0 & -ie^{-i\phi} \\ ie^{i\phi} & 0 \end{pmatrix}")
+                st.markdown("**Fundamental SU(2) Pauli Matrices:**")
+                st.latex(r"""
+                \hat{\sigma}_x = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}, \quad 
+                \hat{\sigma}_y = \begin{pmatrix} 0 & -i \\ i & 0 \end{pmatrix}, \quad 
+                \hat{\sigma}_z = \begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}
+                """)
+                st.markdown("<hr style='border-color: #f1f5f9; margin: 10px 0;'>", unsafe_allow_html=True)
+                st.markdown("**Dynamic Local Operators (Cylindrical Projections):**")
+                st.latex(r"""
+                \hat{\sigma}_r = \hat{\sigma}_x \cos\phi + \hat{\sigma}_y \sin\phi = \begin{pmatrix} 0 & e^{-i\phi} \\ e^{i\phi} & 0 \end{pmatrix}
+                """)
+                st.latex(r"""
+                \hat{\sigma}_\phi = -\hat{\sigma}_x \sin\phi + \hat{\sigma}_y \cos\phi = \begin{pmatrix} 0 & -ie^{-i\phi} \\ ie^{i\phi} & 0 \end{pmatrix}
+                """)
 
         # Módulo 2: Evaluación Numérica (EN EL MEDIO)
         with st.container(border=True):
