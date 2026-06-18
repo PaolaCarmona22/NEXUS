@@ -70,7 +70,7 @@ st.markdown("""
 nav_cols = st.columns([2, 5])
 with nav_cols[0]:
     menu_options = ["1. Hamiltonian", "2. Eigenenergies", "3. Eigenstates", "4. States", "5. Conductance"]
-    selected_page = st.selectbox("🧭 ENVIRONMENT NAVIGATION", menu_options, index=0)
+    selected_page = st.selectbox("ENVIRONMENT NAVIGATION", menu_options, index=0)
     
     if selected_page == "2. Eigenenergies":
         st.switch_page("pages/02_Eigenenergies.py")

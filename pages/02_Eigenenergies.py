@@ -46,7 +46,7 @@ st.markdown("<div class='nexus-header'><div class='brand-area'><h1>NEXUS</h1><p>
 nav_cols = st.columns([2, 5])
 with nav_cols[0]:
     menu_options = ["2. Eigenenergies", "1. Hamiltonian", "3. Eigenstates", "4. States", "5. Conductance"]
-    selected_page = st.selectbox("🧭 ENVIRONMENT NAVIGATION", menu_options, index=0)
+    selected_page = st.selectbox("ENVIRONMENT NAVIGATION", menu_options, index=0)
     
     if selected_page == "1. Hamiltonian":
         st.switch_page("01_Hamiltonian.py")
