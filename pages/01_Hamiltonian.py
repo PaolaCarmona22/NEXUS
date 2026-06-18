@@ -18,6 +18,14 @@ if "use_zeeman" not in st.session_state:
 if "use_rashba" not in st.session_state:
     st.session_state.use_rashba = True
 
+# Inicialización por defecto de variables numéricas para evitar errores de referencia cruzada
+if "r0_val" not in st.session_state: st.session_state["r0_val"] = 40.0
+if "meff_val" not in st.session_state: st.session_state["meff_val"] = 0.023
+if "l_val" not in st.session_state: st.session_state["l_val"] = 1
+if "phi_ratio" not in st.session_state: st.session_state["phi_ratio"] = 1.2
+if "bz_val" not in st.session_state: st.session_state["bz_val"] = 2.5
+if "alpha_val" not in st.session_state: st.session_state["alpha_val"] = 15.0
+
 # --- CSS NEXUS: Unificado y Sincronizado ---
 st.markdown("""
 <style>
@@ -66,17 +74,26 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- SISTEMA DE NAVEGACIÓN INFALIBLE PARA CODESPACES ---
+# --- SISTEMA DE NAVEGACIÓN INFALIBLE Y CONTROLADO POR FLUJO ---
 nav_cols = st.columns([2, 5])
 with nav_cols[0]:
-    menu_options = ["1. Hamiltonian", "2. Eigenenergies", "3. Eigenstates", "4. States", "5. Conductance"]
-    selected_page = st.selectbox("ENVIRONMENT NAVIGATION", menu_options, index=0)
+    if st.session_state.engine_running:
+        menu_options = ["1. Hamiltonian", "2. Eigenenergies", "3. Eigenstates", "4. States", "5. Conductance"]
+    else:
+        menu_options = ["1. Hamiltonian (Setup Operator)"]
+        
+    selected_page = st.selectbox("ENVIRONMENT NAVIGATION", menu_options, index=0, key="nav_hamiltonian")
     
-    if selected_page == "2. Eigenenergies":
+    if "2. Eigenenergies" in selected_page:
         st.switch_page("pages/02_Eigenenergies.py")
+    elif "3. Eigenstates" in selected_page:
+        st.switch_page("pages/03_Eigenstates.py")
+    elif "4. States" in selected_page:
+        st.switch_page("pages/04_States.py")
+    elif "5. Conductance" in selected_page:
+        st.switch_page("pages/05_Conductance.py")
 
 st.markdown("<hr style='margin: 10px 0 25px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
-
 
 # ============================================================
 # FASE 1: CONSTRUIBLE TEÓRICO 
@@ -137,17 +154,17 @@ if not st.session_state.engine_running:
             """, unsafe_allow_html=True)
 
 # ============================================================
-# FASE 2: ENTORNO INTERACTIVO
+# FASE 2: ENTORNO INTERACTIVO EN TIEMPO REAL
 # ============================================================
 else:
     col_main_left, col_main_right = st.columns([5.2, 1.8])
 
-    r0_val = st.session_state.get('r0_slider', 40.0)
-    meff_val = st.session_state.get('meff_slider', 0.023)
-    l_val = st.session_state.get('l_input', 1)
-    phi_ratio = st.session_state.get('phi_slider', 1.2) if st.session_state.use_flux else 0.0
-    bz_val = st.session_state.get('bz_slider', 2.5) if st.session_state.use_zeeman else 0.0
-    alpha_val = st.session_state.get('alpha_slider', 15.0) if st.session_state.use_rashba else 0.0
+    r0_val = st.session_state["r0_val"]
+    meff_val = st.session_state["meff_val"]
+    l_val = st.session_state["l_val"]
+    phi_ratio = st.session_state["phi_ratio"] if st.session_state.use_flux else 0.0
+    bz_val = st.session_state["bz_val"] if st.session_state.use_zeeman else 0.0
+    alpha_val = st.session_state["alpha_val"] if st.session_state.use_rashba else 0.0
 
     hbar_sq_over_2m0 = 38.1  
     g_factor = 15.0         
@@ -216,21 +233,17 @@ else:
             grid_p1, grid_p2, grid_p3 = st.columns([1.5, 1.0, 1.5])
             
             with grid_p1:
-                r0_val = st.slider("Ring Radius $r_0$ (nm)", 10.0, 100.0, 40.0, step=2.5, key='r0_slider')
-                meff_val = st.slider("Effective Mass $m^*$ ($m_0$)", 0.01, 0.10, 0.023, step=0.001, key='meff_slider')
+                st.session_state["r0_val"] = st.slider("Ring Radius $r_0$ (nm)", 10.0, 100.0, float(st.session_state["r0_val"]), step=2.5, key='r0_slider')
+                st.session_state["meff_val"] = st.slider("Effective Mass $m^*$ ($m_0$)", 0.01, 0.10, float(st.session_state["meff_val"]), step=0.001, key='meff_slider')
             with grid_p2:
-                l_val = st.number_input("Angular Momentum $l$", value=1, step=1, key='l_input')
-                st.markdown("<div style='margin-top:22px;'></div>", unsafe_allow_html=True)
-                if st.button("Reset Operator Setup", use_container_width=True, type="secondary"):
-                    st.session_state.engine_running = False
-                    st.rerun()
+                st.session_state["l_val"] = st.number_input("Angular Momentum $l$", value=int(st.session_state["l_val"]), step=1, key='l_input')
             with grid_p3:
                 if st.session_state.use_flux:
-                    phi_ratio = st.slider("Flux Ratio $\\Phi/\\Phi_0$", 0.0, 5.0, 1.2, step=0.1, key='phi_slider')
+                    st.session_state["phi_ratio"] = st.slider("Flux Ratio $\\Phi/\\Phi_0$", 0.0, 5.0, float(st.session_state["phi_ratio"]), step=0.1, key='phi_slider')
                 if st.session_state.use_zeeman:
-                    bz_val = st.slider("Magnetic Field $B_z$ (T)", 0.0, 10.0, 2.5, step=0.1, key='bz_slider')
+                    st.session_state["bz_val"] = st.slider("Magnetic Field $B_z$ (T)", 0.0, 10.0, float(st.session_state["bz_val"]), step=0.1, key='bz_slider')
                 if st.session_state.use_rashba:
-                    alpha_val = st.slider("Rashba Coupling $\\alpha_R$", 0.0, 40.0, 15.0, step=1.0, key='alpha_slider')
+                    st.session_state["alpha_val"] = st.slider("Rashba Coupling $\\alpha_R$", 0.0, 40.0, float(st.session_state["alpha_val"]), step=1.0, key='alpha_slider')
 
     with col_main_right:
         with st.container(border=True):
@@ -273,3 +286,11 @@ else:
                 </p>
             </div>
             """, unsafe_allow_html=True)
+
+    # --- PIE DE PÁGINA: CONTROL DE RESET ESTÁNDAR Y UNIFORME ---
+    st.markdown("---")
+    col_reset, col_spacer = st.columns([1.5, 5.5])
+    with col_reset:
+        if st.button("Reset", use_container_width=True, type="secondary", key="global_reset_h"):
+            st.session_state.engine_running = False
+            st.rerun()
