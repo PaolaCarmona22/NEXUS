@@ -18,13 +18,6 @@ if "use_zeeman" not in st.session_state:
 if "use_rashba" not in st.session_state:
     st.session_state.use_rashba = True
 
-# --- Redirección del Menú Superior de Navegación ---
-if "target_page" in st.query_params:
-    page = st.query_params["target_page"]
-    if page == "eigenenergies":
-        st.query_params.clear()
-        st.switch_page("pages/02_Eigenenergies.py")
-
 # --- CSS NEXUS: Unificado y Sincronizado ---
 st.markdown("""
 <style>
@@ -36,19 +29,13 @@ st.markdown("""
         background: linear-gradient(90deg, #001f3f 0%, #003366 100%);
         padding: 20px 40px;
         border-bottom: 4px solid #00d4ff;
-        margin: -65px -50px 30px -50px;
+        margin: -65px -50px 20px -50px;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
     .brand-area h1 { color: white !important; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 0.5px; }
     .brand-area p { color: #00d4ff; margin: 2px 0 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-    .nav-tabs-container { display: flex; gap: 10px; align-items: center; }
-    .nav-tab-btn {
-        background-color: rgba(255, 255, 255, 0.08); color: #94a3b8; border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 8px 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; border-radius: 3px; text-decoration: none !important;
-    }
-    .nav-tab-btn.active { background-color: #0056b3 !important; color: white !important; border: 1px solid #00d4ff !important; }
 
     /* ESTILO DE LOS PANELES */
     div[data-testid="stVerticalBlockBorderWrapper"] {
@@ -76,15 +63,19 @@ st.markdown("""
         <h1>NEXUS</h1>
         <p>Advanced Quantum Simulation Environment</p>
     </div>
-    <div class='nav-tabs-container'>
-        <a class='nav-tab-btn active' href='#'>1. Hamiltonian</a>
-        <a class='nav-tab-btn' href='?target_page=eigenenergies'>2. Eigenenergies</a>
-        <a class='nav-tab-btn' href='#'>3. Eigenstates</a>
-        <a class='nav-tab-btn' href='#'>4. States</a>
-        <a class='nav-tab-btn' href='#'>5. Conductance</a>
-    </div>
 </div>
 """, unsafe_allow_html=True)
+
+# --- SISTEMA DE NAVEGACIÓN INFALIBLE PARA CODESPACES ---
+nav_cols = st.columns([2, 5])
+with nav_cols[0]:
+    menu_options = ["1. Hamiltonian", "2. Eigenenergies", "3. Eigenstates", "4. States", "5. Conductance"]
+    selected_page = st.selectbox("🧭 ENVIRONMENT NAVIGATION", menu_options, index=0)
+    
+    if selected_page == "2. Eigenenergies":
+        st.switch_page("pages/02_Eigenenergies.py")
+
+st.markdown("<hr style='margin: 10px 0 25px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
 
 
 # ============================================================
@@ -146,13 +137,11 @@ if not st.session_state.engine_running:
             """, unsafe_allow_html=True)
 
 # ============================================================
-# FASE 2: ENTORNO INTERACTIVO (SIMETRÍA [5.2, 1.8] CON MATRICES DE PAULI COMPLETAS)
+# FASE 2: ENTORNO INTERACTIVO
 # ============================================================
 else:
-    # Réplica matemática exacta de las dimensiones de la Fase 1
     col_main_left, col_main_right = st.columns([5.2, 1.8])
 
-    # Inicialización de variables desde session_state para evitar NameError antes de los sliders
     r0_val = st.session_state.get('r0_slider', 40.0)
     meff_val = st.session_state.get('meff_slider', 0.023)
     l_val = st.session_state.get('l_input', 1)
@@ -168,15 +157,12 @@ else:
     zeeman_energy = 0.5 * g_factor * mu_B_meV * bz_val
     rashba_energy = (alpha_val / r0_val) * (l_val + 0.5 + phi_ratio) if st.session_state.use_rashba else 0.0
     
-    h11 = h_coef * ((l_val + phi_ratio)**2) + zeeman_energy
-    h22 = h_coef * ((1 + l_val + phi_ratio)**2) - zeeman_energy
+    h11 = h_coef * ((l_val + phi_ratio)**2) + zeeman_energy if st.session_state.use_zeeman else h_coef * ((l_val + phi_ratio)**2)
+    h22 = h_coef * ((1 + l_val + phi_ratio)**2) - zeeman_energy if st.session_state.use_zeeman else h_coef * ((1 + l_val + phi_ratio)**2)
     h12 = rashba_energy
     h21 = rashba_energy
 
-    # --- COLUMNA IZQUIERDA (Ancho 5.2): CÓMPUTO Y CONTROLES ABAJO ---
     with col_main_left:
-        
-        # Módulo 1: Formulación Analítica Matricial (ARRIBA)
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Quantum Operators & Basis</p>", unsafe_allow_html=True)
             tab_matrix, tab_basis, tab_pauli = st.tabs(["Matrix Projection", "Spinor Basis", "Local Pauli Fields"])
@@ -215,7 +201,6 @@ else:
                 \hat{\sigma}_\phi = -\hat{\sigma}_x \sin\phi + \hat{\sigma}_y \cos\phi = \begin{pmatrix} 0 & -ie^{-i\phi} \\ ie^{i\phi} & 0 \end{pmatrix}
                 """)
 
-        # Módulo 2: Evaluación Numérica (EN EL MEDIO)
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Discrete Hamiltonian Matrix Evaluation</p>", unsafe_allow_html=True)
             st.latex(f"""
@@ -226,7 +211,6 @@ else:
             """)
             st.markdown(f"<div class='matrix-status' style='text-align:center; border-left: 3px solid #cbd5e1; color: #475569;'>HERMITIAN VALIDATION SUCCESSFUL: H = H†</div>", unsafe_allow_html=True)
 
-        # Módulo 3: Consola Horizontal de Parámetros (ABAJO)
         with st.container(border=True):
             st.markdown("<p class='panel-title' style='margin-bottom:12px;'>System Parameters Console</p>", unsafe_allow_html=True)
             grid_p1, grid_p2, grid_p3 = st.columns([1.5, 1.0, 1.5])
@@ -248,12 +232,10 @@ else:
                 if st.session_state.use_rashba:
                     alpha_val = st.slider("Rashba Coupling $\\alpha_R$", 0.0, 40.0, 15.0, step=1.0, key='alpha_slider')
 
-    # --- COLUMNA DERECHA (Ancho 1.8): REGION DE PHYSICS INSIGHTS DEDICADA (ESTÁTICA) ---
     with col_main_right:
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Physics Insights</p>", unsafe_allow_html=True)
             
-            # Evaluación de reglas lógicas dinámicas
             if not st.session_state.use_rashba or rashba_energy == 0:
                 ins_1 = "<b>Orbital Confinement Dominant.</b> Spin-orbit interaction is absent. Spin projections remain perfectly decoupled and spin-pure."
                 ins_2 = "<b>Hamiltonian becomes diagonal.</b> Spin-up and spin-down states are completely uncoupled because the Rashba parameter is zero."
@@ -277,24 +259,11 @@ else:
             else:
                 ins_5 += f"Spin-orbit splitting overrides the kinetic quantization scale."
 
-            # Renderizado de cartas verticales fijas
             st.markdown(f"""
-            <div class='insight-card'>
-                <h4>DOMINANT INTERACTION</h4>
-                <p>{ins_1}</p>
-            </div>
-            <div class='insight-card'>
-                <h4>MATRIX STRUCTURE</h4>
-                <p>{ins_2}</p>
-            </div>
-            <div class='insight-card'>
-                <h4>SYMMETRY ANALYSIS</h4>
-                <p>{ins_3}</p>
-            </div>
-            <div class='insight-card'>
-                <h4>PHYSICAL INTERPRETATION</h4>
-                <p>{ins_5}</p>
-            </div>
+            <div class='insight-card'><h4>DOMINANT INTERACTION</h4><p>{ins_1}</p></div>
+            <div class='insight-card'><h4>MATRIX STRUCTURE</h4><p>{ins_2}</p></div>
+            <div class='insight-card'><h4>SYMMETRY ANALYSIS</h4><p>{ins_3}</p></div>
+            <div class='insight-card'><h4>PHYSICAL INTERPRETATION</h4><p>{ins_5}</p></div>
             <div class='insight-card'>
                 <h4>NUMERICAL STATUS</h4>
                 <p style='font-family: monospace; font-size: 11px; margin:0;'>
