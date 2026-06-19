@@ -49,15 +49,27 @@ st.markdown("""
 
 st.markdown("<div class='nexus-header'><div class='brand-area'><h1>NEXUS</h1><p>Advanced Quantum Simulation Environment</p></div></div>", unsafe_allow_html=True)
 
-# --- NAVEGACIÓN DE PÁGINAS ---
+# --- NAVEGACIÓN DE PÁGINAS ESTÁNDAR NEXUS (5 ETAPAS) ---
 nav_cols = st.columns([2, 5])
 with nav_cols[0]:
-    menu_options = ["2. Eigenenergies", "1. Hamiltonian"]
+    menu_options = [
+        "2. Eigenenergies", 
+        "1. Hamiltonian", 
+        "3. Eigenstates", 
+        "4. Matrix Elements", 
+        "5. Optical Absorption"
+    ]
     selected_page = st.selectbox("ENVIRONMENT NAVIGATION", menu_options, index=0, key="nav_eigenenergies")
+    
+    # Control de redirección síncrona según la selección del usuario
     if "1. Hamiltonian" in selected_page:
         st.switch_page("pages/01_Hamiltonian.py")
-
-st.markdown("<hr style='margin: 10px 0 25px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
+    elif "3. Eigenstates" in selected_page:
+        st.switch_page("pages/03_Eigenstates.py")
+    elif "4. Matrix Elements" in selected_page:
+        st.switch_page("pages/04_MatrixElements.py")
+    elif "5. Optical Absorption" in selected_page:
+        st.switch_page("pages/05_OpticalAbsorption.py")
 
 # ============================================================
 # ABSORCIÓN DIRECTA Y REAL DEL ESTADO DEL HAMILTONIANO

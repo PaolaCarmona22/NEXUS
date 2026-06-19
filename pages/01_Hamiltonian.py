@@ -15,8 +15,9 @@ if "use_flux" not in st.session_state:
     st.session_state.use_flux = True
 if "use_zeeman" not in st.session_state:
     st.session_state.use_zeeman = True
-if "use_rashba" not in st.session_state:
-    st.session_state.use_rashba = True
+
+# Forzamos internamente que Rashba esté siempre activo en la física del sistema
+st.session_state["use_rashba"] = True
 
 # Inicialización por defecto de variables numéricas para evitar errores de referencia cruzada
 if "r0_val" not in st.session_state: st.session_state["r0_val"] = 40.0
@@ -26,13 +27,13 @@ if "phi_ratio" not in st.session_state: st.session_state["phi_ratio"] = 1.2
 if "bz_val" not in st.session_state: st.session_state["bz_val"] = 2.5
 if "alpha_val" not in st.session_state: st.session_state["alpha_val"] = 15.0
 
-# --- CSS NEXUS: Unificado y Sincronizado ---
+# --- CSS NEXUS: Navbar con Botones Horizontales Integrados ---
 st.markdown("""
 <style>
     [data-testid="stSidebar"] { display: none; }
     .stApp { background-color: #f0f2f6; font-family: 'Segoe UI', sans-serif; color: #0f172a; }
 
-    /* INTERFAZ SUPERIOR: Header Navbar */
+    /* INTERFAZ SUPERIOR: Header Navbar extendido para contener la botonera */
     .nexus-navbar {
         background: linear-gradient(90deg, #001f3f 0%, #003366 100%);
         padding: 20px 40px;
@@ -58,9 +59,33 @@ st.markdown("""
         background-color: #f1f5f9; padding: 10px; border-radius: 4px; border-left: 4px solid #10b981;
         font-family: monospace; font-size: 12px; font-weight: bold; color: #0f172a; margin-top: 10px;
     }
-    .insight-card { background: white; padding: 14px; border-radius: 4px; border: 1px solid #ced4da; margin-bottom: 12px; }
-    .insight-card h4 { color: #001f3f; font-size: 12px; font-weight: 700; margin: 0 0 6px 0; text-transform: uppercase; }
-    .insight-card p { color: #495057; font-size: 11.5px; line-height: 1.5; margin: 0; }
+
+    /* CAMUFLAJE DE EXPANDERS: Estilo ejecutivo premium */
+    .stDetails {
+        background: white !important; 
+        border: 1px solid #ced4da !important; 
+        border-radius: 4px !important; 
+        margin-bottom: 12px !important;
+        box-shadow: none !important;
+    }
+    .stDetails summary {
+        padding: 10px 14px !important;
+    }
+    .stDetails summary p {
+        color: #001f3f !important; 
+        font-size: 12px !important; 
+        font-weight: 700 !important; 
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin: 0 !important;
+    }
+    .insight-content { 
+        color: #495057; 
+        font-size: 11.5px; 
+        line-height: 1.5; 
+        margin: 0;
+        padding: 0px 14px 14px 14px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -74,26 +99,30 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- SISTEMA DE NAVEGACIÓN INFALIBLE Y CONTROLADO POR FLUJO ---
-nav_cols = st.columns([2, 5])
-with nav_cols[0]:
-    if st.session_state.engine_running:
-        menu_options = ["1. Hamiltonian", "2. Eigenenergies", "3. Eigenstates", "4. States", "5. Conductance"]
-    else:
-        menu_options = ["1. Hamiltonian (Setup Operator)"]
-        
-    selected_page = st.selectbox("ENVIRONMENT NAVIGATION", menu_options, index=0, key="nav_hamiltonian")
-    
-    if "2. Eigenenergies" in selected_page:
-        st.switch_page("pages/02_Eigenenergies.py")
-    elif "3. Eigenstates" in selected_page:
-        st.switch_page("pages/03_Eigenstates.py")
-    elif "4. States" in selected_page:
-        st.switch_page("pages/04_States.py")
-    elif "5. Conductance" in selected_page:
-        st.switch_page("pages/05_Conductance.py")
-
-st.markdown("<hr style='margin: 10px 0 25px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
+# Botonera superior de navegación dinámica (Solo se muestra si el motor está corriendo)
+if st.session_state.engine_running:
+    st.markdown("<div style='margin-top: -10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+    b_col1, b_col2, b_col3, b_col4, b_col5 = st.columns([2, 2, 2, 2, 2])
+    with b_col1:
+        if st.button("1. Hamiltonian", use_container_width=True, type="primary"):
+            st.switch_page("pages/01_Hamiltonian.py")
+    with b_col2:
+        if st.button("2. Eigenenergies", use_container_width=True):
+            st.switch_page("pages/02_Eigenenergies.py")
+    with b_col3:
+        if st.button("3. Eigenstates", use_container_width=True):
+            st.switch_page("pages/03_Eigenstates.py")
+    with b_col4:
+        if st.button("4. States", use_container_width=True):
+            st.switch_page("pages/04_States.py")
+    with b_col5:
+        if st.button("5. Conductance", use_container_width=True):
+            st.switch_page("pages/05_Conductance.py")
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin: -5px 0 25px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
+else:
+    # Si el motor no corre, agregamos un espaciado limpio equivalente para que el panel no se pegue al header
+    st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
 
 # ============================================================
 # FASE 1: CONSTRUIBLE TEÓRICO 
@@ -107,54 +136,74 @@ if not st.session_state.engine_running:
             container_render = st.empty()
             st.markdown("<span class='instruction-text'>Configure the active interaction terms to dynamically construct the system's quantum operator matrix:</span>", unsafe_allow_html=True)
             
+            # Casillas de verificación
             grid_col1, grid_col2 = st.columns(2)
             with grid_col1:
-                st.markdown("**Symmetry Breaking Modules**")
                 use_flux = st.checkbox("Include Aharonov-Bohm Flux (Gauge Field)", value=st.session_state.use_flux, key="flux_chk")
-                use_zeeman = st.checkbox("Include External Magnetic Field ($B_z$)", value=st.session_state.use_zeeman, key="zeeman_chk")
             with grid_col2:
-                st.markdown("**Spin-Orbit Fields**")
-                use_rashba = st.checkbox("Include Rashba Coupling (SIA)", value=st.session_state.use_rashba, key="rashba_chk")
-                
+                use_zeeman = st.checkbox("Include External Magnetic Field ($B_z$)", value=st.session_state.use_zeeman, key="zeeman_chk")
+            
+            use_rashba = True
+            
+            # Construcción matemática
             kinetic = "\\left(-i\\frac{\\partial}{\\partial\\phi} + \\frac{\\Phi}{\\Phi_0}\\right)^2" if use_flux else "\\left(-i\\frac{\\partial}{\\partial\\phi}\\right)^2"
             h_latex = f"\\hat{{H}} = \\frac{{\\hbar^2}}{{2m^* r_{{0}}^{2}}}{kinetic}"
             if use_zeeman: h_latex += " + \\frac{1}{2}g\\mu_{B}B_{z}\\hat{\\sigma}_{z}"
-            if use_rashba: h_latex += " + \\frac{\\alpha_{R}}{r_{0}}\\hat{\\sigma}_r\\left(-i\\frac{\\partial}{\\partial\\phi}" + (" + \\frac{\\Phi}{\\Phi_0}" if use_flux else "") + "\\right) - i\\frac{\\alpha_R}{2r_0}\\hat{\\sigma}_\\phi"
+            h_latex += " + \\frac{\\alpha_{R}}{r_{0}}\\hat{\\sigma}_r\\left(-i\\frac{\\partial}{\\partial\\phi}" + (" + \\frac{\\Phi}{\\Phi_0}" if use_flux else "") + "\\right) - i\\frac{\\alpha_R}{2r_0}\\hat{\\sigma}_\\phi"
             
             with container_render.container():
-                st.markdown("<span class='latex-title'>Explicit Hamiltonian</span>", unsafe_allow_html=True)
+                st.markdown("<span class='latex-title'>Explicit Generalized Hamiltonian Matrix</span>", unsafe_allow_html=True)
                 st.markdown("<hr style='border-color: #e2e8f0; margin: 10px 0;'>", unsafe_allow_html=True)
                 st.latex(h_latex)
                 st.markdown("<hr style='border-color: #e2e8f0; margin: 10px 0;'>", unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Run Core Engine →", type="primary", use_container_width=True):
-                st.session_state.use_flux = use_flux
-                st.session_state.use_zeeman = use_zeeman
-                st.session_state.use_rashba = use_rashba
-                st.session_state.engine_running = True
-                st.rerun()
+            
+            # BOTÓN RUN MINIMALISTA
+            btn_col, _ = st.columns([1, 5])
+            with btn_col:
+                if st.button("Run", type="primary"):
+                    st.session_state.use_flux = use_flux
+                    st.session_state.use_zeeman = use_zeeman
+                    st.session_state.use_rashba = use_rashba
+                    st.session_state.engine_running = True
+                    st.rerun()
 
     with col_main_right:
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Physics Insights</p>", unsafe_allow_html=True)
-            st.markdown("""
-            <div class='insight-card'>
-                <h4>Aharonov-Bohm Flux</h4>
-                <p>The vector potential of the magnetic flux breaks TRS by inducing a non-zero geometric phase directly into the kinetic momentum operator.</p>
-            </div>
-            <div class='insight-card'>
-                <h4>External Magnetic Field</h4>
-                <p>An external field <b>B<sub>z</sub></b> removes spin degeneracy via the Zeeman term. Its contribution is fully encapsulated by this spin-coupling term.</p>
-            </div>
-            <div class='insight-card'>
-                <h4>Rashba Spin-Orbit Field</h4>
-                <p>Relativistic effects couple momentum to spin, generating states with spin-split energy even at zero external field.</p>
-            </div>
-            """, unsafe_allow_html=True)
+            
+            with st.expander("Hamiltonian Operator", expanded=True):
+                st.markdown("""
+                <div class='insight-content'>
+                    <p>The Hamiltonian <b>H</b> is the complete mathematical representation of the quantum system. It contains all energetic contributions, interactions, and symmetry-breaking mechanisms that govern the dynamics of the electron.</p>
+                    <p style='margin-top: 6px; font-style: italic;'>Every observable quantity calculated in this simulator — energy spectra, eigenstates, spin textures, and transport properties — originates from the eigenvalue problem: <b>HΨ = EΨ</b>.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with st.expander("Physical Meaning", expanded=False):
+                st.markdown("""
+                <div class='insight-content'>
+                    <p>Each term of the Hamiltonian corresponds to a distinct physical mechanism:</p>
+                    <ul style='margin: 4px 0; padding-left: 16px; font-size: 11.5px; color:#495057;'>
+                        <li><b>Kinetic energy</b> defines the free propagation of the electron.</li>
+                        <li><b>Magnetic flux</b> introduces geometric quantum phases.</li>
+                        <li><b>Zeeman coupling</b> interacts directly with spin.</li>
+                        <li><b>Spin-orbit interactions</b> couple orbital motion and spin dynamics.</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with st.expander("Why Simplify?", expanded=False):
+                st.markdown("""
+                <div class='insight-content'>
+                    <p>Analytical and numerical studies often exploit the symmetries of the device to reduce the Hamiltonian to a lower-dimensional effective model. This reduction preserves the essential physics while exposing the dominant mechanisms.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
 
 # ============================================================
-# FASE 2: ENTORNO INTERACTIVO EN TIEMPO REAL
+# HAMILTONIANO EN FORMA MATRICIAL (FASE 2: ENTORNO INTERACTIVO)
 # ============================================================
 else:
     col_main_left, col_main_right = st.columns([5.2, 1.8])
@@ -167,7 +216,7 @@ else:
     alpha_val = st.session_state["alpha_val"] if st.session_state.use_rashba else 0.0
 
     hbar_sq_over_2m0 = 38.1  
-    g_factor = 15.0         
+    g_factor = 15.0        
     mu_B_meV = 0.05788      
     
     h_coef = hbar_sq_over_2m0 / (meff_val * (r0_val**2))
@@ -205,8 +254,8 @@ else:
             with tab_pauli:
                 st.markdown("**Fundamental SU(2) Pauli Matrices:**")
                 st.latex(r"""
-                \hat{\sigma}_x = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}, \quad 
-                \hat{\sigma}_y = \begin{pmatrix} 0 & -i \\ i & 0 \end{pmatrix}, \quad 
+                \hat{\sigma}_x = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}, \quad
+                \hat{\sigma}_y = \begin{pmatrix} 0 & -i \\ i & 0 \end{pmatrix}, \quad
                 \hat{\sigma}_z = \begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}
                 """)
                 st.markdown("<hr style='border-color: #f1f5f9; margin: 10px 0;'>", unsafe_allow_html=True)
