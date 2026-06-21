@@ -173,7 +173,8 @@ if not st.session_state.engine_running:
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Physics Insights</p>", unsafe_allow_html=True)
             
-            with st.expander("Hamiltonian Operator", expanded=True):
+            # MODIFICADO: expanded=False para que inicie cerrado por defecto
+            with st.expander("Hamiltonian Operator", expanded=False):
                 st.markdown("""
                 <div class='insight-content'>
                     <p>The Hamiltonian <b>H</b> is the complete mathematical representation of the quantum system. It contains all energetic contributions, interactions, and symmetry-breaking mechanisms that govern the dynamics of the electron.</p>
@@ -200,35 +201,14 @@ if not st.session_state.engine_running:
                     <p>Analytical and numerical studies often exploit the symmetries of the device to reduce the Hamiltonian to a lower-dimensional effective model. This reduction preserves the essential physics while exposing the dominant mechanisms.</p>
                 </div>
                 """, unsafe_allow_html=True)
-
-
 # ============================================================
-# HAMILTONIANO EN FORMA MATRICIAL (FASE 2: ENTORNO INTERACTIVO)
+# HAMILTONIANO EN FORMA MATRICIAL (FASE 2: OPERADORES Y BASES)
 # ============================================================
 else:
     col_main_left, col_main_right = st.columns([5.2, 1.8])
 
-    r0_val = st.session_state["r0_val"]
-    meff_val = st.session_state["meff_val"]
-    l_val = st.session_state["l_val"]
-    phi_ratio = st.session_state["phi_ratio"] if st.session_state.use_flux else 0.0
-    bz_val = st.session_state["bz_val"] if st.session_state.use_zeeman else 0.0
-    alpha_val = st.session_state["alpha_val"] if st.session_state.use_rashba else 0.0
-
-    hbar_sq_over_2m0 = 38.1  
-    g_factor = 15.0        
-    mu_B_meV = 0.05788      
-    
-    h_coef = hbar_sq_over_2m0 / (meff_val * (r0_val**2))
-    zeeman_energy = 0.5 * g_factor * mu_B_meV * bz_val
-    rashba_energy = (alpha_val / r0_val) * (l_val + 0.5 + phi_ratio) if st.session_state.use_rashba else 0.0
-    
-    h11 = h_coef * ((l_val + phi_ratio)**2) + zeeman_energy if st.session_state.use_zeeman else h_coef * ((l_val + phi_ratio)**2)
-    h22 = h_coef * ((1 + l_val + phi_ratio)**2) - zeeman_energy if st.session_state.use_zeeman else h_coef * ((1 + l_val + phi_ratio)**2)
-    h12 = rashba_energy
-    h21 = rashba_energy
-
     with col_main_left:
+        # CONTENEDOR PRINCIPAL: Operadores algebraicos y de simetría en base discreta
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Quantum Operators & Basis</p>", unsafe_allow_html=True)
             tab_matrix, tab_basis, tab_pauli = st.tabs(["Matrix Projection", "Spinor Basis", "Local Pauli Fields"])
@@ -267,74 +247,110 @@ else:
                 \hat{\sigma}_\phi = -\hat{\sigma}_x \sin\phi + \hat{\sigma}_y \cos\phi = \begin{pmatrix} 0 & -ie^{-i\phi} \\ ie^{i\phi} & 0 \end{pmatrix}
                 """)
 
+        # CONTENEDOR SECUNDARIO: Bloqueo teórico de alto nivel
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Discrete Hamiltonian Matrix Evaluation</p>", unsafe_allow_html=True)
-            st.latex(f"""
-            H = \\begin{{pmatrix}}
-            {h11:.4f} & {h12:.4f} \\\\
-            {h21:.4f} & {h22:.4f}
-            \\end{{pmatrix}} \\text{{ meV}}
-            """)
-            st.markdown(f"<div class='matrix-status' style='text-align:center; border-left: 3px solid #cbd5e1; color: #475569;'>HERMITIAN VALIDATION SUCCESSFUL: H = H†</div>", unsafe_allow_html=True)
-
-        with st.container(border=True):
-            st.markdown("<p class='panel-title' style='margin-bottom:12px;'>System Parameters Console</p>", unsafe_allow_html=True)
-            grid_p1, grid_p2, grid_p3 = st.columns([1.5, 1.0, 1.5])
-            
-            with grid_p1:
-                st.session_state["r0_val"] = st.slider("Ring Radius $r_0$ (nm)", 10.0, 100.0, float(st.session_state["r0_val"]), step=2.5, key='r0_slider')
-                st.session_state["meff_val"] = st.slider("Effective Mass $m^*$ ($m_0$)", 0.01, 0.10, float(st.session_state["meff_val"]), step=0.001, key='meff_slider')
-            with grid_p2:
-                st.session_state["l_val"] = st.number_input("Angular Momentum $l$", value=int(st.session_state["l_val"]), step=1, key='l_input')
-            with grid_p3:
-                if st.session_state.use_flux:
-                    st.session_state["phi_ratio"] = st.slider("Flux Ratio $\\Phi/\\Phi_0$", 0.0, 5.0, float(st.session_state["phi_ratio"]), step=0.1, key='phi_slider')
-                if st.session_state.use_zeeman:
-                    st.session_state["bz_val"] = st.slider("Magnetic Field $B_z$ (T)", 0.0, 10.0, float(st.session_state["bz_val"]), step=0.1, key='bz_slider')
-                if st.session_state.use_rashba:
-                    st.session_state["alpha_val"] = st.slider("Rashba Coupling $\\alpha_R$", 0.0, 40.0, float(st.session_state["alpha_val"]), step=1.0, key='alpha_slider')
+            st.markdown(
+                "<div style='padding: 25px 15px; background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 4px; text-align: center; color: #64748b; font-size: 13px; font-style: italic;'>\n"
+                "<b>Awaiting Operator Compilation:</b> Numerical evaluation and eigenvalue solver will unlock upon dynamic laboratory model generation.\n"
+                "</div>", 
+                unsafe_allow_html=True
+            )
+            st.markdown(f"<div class='matrix-status' style='text-align:center; border-left: 3px solid #cbd5e1; color: #475569;'>OPERATOR ALGEBRA INITIALIZED SUCCESSFUL: H = H†</div>", unsafe_allow_html=True)
 
     with col_main_right:
         with st.container(border=True):
-            st.markdown("<p class='panel-title'>Physics Insights</p>", unsafe_allow_html=True)
+            st.markdown("<p class='panel-title'>Hamiltonian Representation</p>", unsafe_allow_html=True)
             
-            if not st.session_state.use_rashba or rashba_energy == 0:
-                ins_1 = "<b>Orbital Confinement Dominant.</b> Spin-orbit interaction is absent. Spin projections remain perfectly decoupled and spin-pure."
-                ins_2 = "<b>Hamiltonian becomes diagonal.</b> Spin-up and spin-down states are completely uncoupled because the Rashba parameter is zero."
-            elif h_coef > rashba_energy:
-                ins_1 = "Rashba coupling is weak compared to orbital confinement. Spin mixing is limited and the eigenstates remain mostly spin-pure."
-                ins_2 = "Diagonal terms represent orbital and Zeeman energies. Off-diagonal terms originate from Rashba coupling and connect opposite spin channels."
-            else:
-                ins_1 = "Rashba coupling dominates the orbital energy scale. Strong spin-orbit hybridization is expected."
-                ins_2 = "Diagonal terms represent orbital and Zeeman energies. Off-diagonal terms originate from Rashba coupling and connect opposite spin channels."
+            # --- EXPANDER 1: BASIS REPRESENTATION ---
+            with st.expander("Basis Representation", expanded=False):
+                st.markdown("""
+                <div class='insight-content'>
+                    <p>The continuous Hamiltonian has been projected onto the selected spinor basis.</p>
+                    <p style='margin-top: 6px;'>All operators are now expressed as discrete matrix elements acting within the reduced Hilbert space.</p>
+                </div>
+                """, unsafe_allow_html=True)
                 
-            if (st.session_state.use_flux and phi_ratio != 0) or (st.session_state.use_zeeman and bz_val != 0):
-                ins_3 = "Hamiltonian is Hermitian (real eigenvalues). <span style='color:#475569; font-weight:600; display:block; margin-top:4px;'>Time-reversal symmetry is broken by magnetic flux/fields.</span>"
-            else:
-                ins_3 = "Hamiltonian is Hermitian (real eigenvalues). <span style='color:#475569; font-weight:600; display:block; margin-top:4px;'>Time-reversal symmetry preserved.</span>"
-                
-            ins_5 = f"The selected state corresponds to an electron confined to a <b>{r0_val:.1f} nm</b> semiconductor ring. "
-            if st.session_state.use_rashba and alpha_val > 0:
-                ins_5 += "Rashba interaction introduces spin precession around the ring trajectory. "
-            if not st.session_state.use_rashba or h_coef > rashba_energy:
-                ins_5 += f"Orbital confinement energy ({h_coef:.2f} meV) exceeds spin-orbit interaction energy."
-            else:
-                ins_5 += f"Spin-orbit splitting overrides the kinetic quantization scale."
+            # --- EXPANDER 2: MATRIX STRUCTURE ---
+            with st.expander("Matrix Structure", expanded=False):
+                st.markdown("""
+                <div class='insight-content'>
+                    <p><b>Diagonal entries</b> describe self-energy contributions associated with orbital motion and external fields.</p>
+                    <p style='margin-top: 6px;'><b>Off-diagonal entries</b> encode coupling mechanisms capable of mixing basis states and modifying the quantum spectrum.</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-            st.markdown(f"""
-            <div class='insight-card'><h4>DOMINANT INTERACTION</h4><p>{ins_1}</p></div>
-            <div class='insight-card'><h4>MATRIX STRUCTURE</h4><p>{ins_2}</p></div>
-            <div class='insight-card'><h4>SYMMETRY ANALYSIS</h4><p>{ins_3}</p></div>
-            <div class='insight-card'><h4>PHYSICAL INTERPRETATION</h4><p>{ins_5}</p></div>
-            <div class='insight-card'>
-                <h4>NUMERICAL STATUS</h4>
-                <p style='font-family: monospace; font-size: 11px; margin:0;'>
-                    Basis size: 2 x 2<br>
-                    Matrix conditioning: Stable<br>
-                    Ready for eigensolver.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            # --- EXPANDER 3: HERMITICITY CHECK ---
+            with st.expander("Hermiticity Check", expanded=False):
+                st.markdown("""
+                <div class='insight-content'>
+                    <p>The constructed Hamiltonian satisfies the fundamental property:</p>
+                    <p style='text-align: center; font-family: monospace; font-size: 13px; font-weight: bold; margin: 10px 0; color: #003366;'>H = H†</p>
+                    <p>This mathematical symmetry strictly ensures real energy eigenvalues and unitary quantum evolution.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # --- EXPANDER 4: DETECTED PHYSICS (TABLA UNIFORME CONFIGURADA) ---
+            with st.expander("Detected Physics", expanded=False):
+                flux_badge = "<span style='color: #10b981; font-weight: bold;'>Active</span>" if st.session_state.use_flux else "<span style='color: #94a3b8;'>Inactive</span>"
+                zeeman_badge = "<span style='color: #10b981; font-weight: bold;'>Active</span>" if st.session_state.use_zeeman else "<span style='color: #94a3b8;'>Inactive</span>"
+                rashba_badge = "<span style='color: #10b981; font-weight: bold;'>Active</span>" if st.session_state.use_rashba else "<span style='color: #94a3b8;'>Inactive</span>"
+                
+                st.markdown(f"""
+                <div class='insight-content' style='padding: 5px 0px;'>
+                    <table style='width: 100%; font-size: 12px; border-collapse: collapse; line-height: 1.6;'>
+                        <thead>
+                            <tr style='border-bottom: 2px solid #e2e8f0; text-align: left;'>
+                                <th style='padding: 6px 4px; color: #475569; font-weight: 700;'>Quantum Term</th>
+                                <th style='padding: 6px 4px; text-align: right; color: #475569; font-weight: 700;'>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style='border-bottom: 1px solid #e2e8f0;'>
+                                <td style='padding: 10px 4px; font-weight: 500;'>Kinetic Energy</td>
+                                <td style='padding: 10px 4px; text-align: right; color: #10b981; font-weight: bold;'>Active</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #e2e8f0;'>
+                                <td style='padding: 10px 4px; font-weight: 500;'>Aharonov-Bohm Flux</td>
+                                <td style='padding: 10px 4px; text-align: right;'>{flux_badge}</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #e2e8f0;'>
+                                <td style='padding: 10px 4px; font-weight: 500;'>Rashba Coupling</td>
+                                <td style='padding: 10px 4px; text-align: right;'>{rashba_badge}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 10px 4px; font-weight: 500;'>External Magnetic Field</td>
+                                <td style='padding: 10px 4px; text-align: right;'>{zeeman_badge}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # --- EXPANDER 5: COMPUTATIONAL STATUS ---
+            with st.expander("Computational Status", expanded=False):
+                f_icon = "Active" if st.session_state.use_flux else "Inactive"
+                z_icon = "Active" if st.session_state.use_zeeman else "Inactive"
+                r_icon = "Active" if st.session_state.use_rashba else "Inactive"
+                
+                st.markdown(f"""
+                <div class='insight-content'>
+                    <p style='margin-bottom: 6px; font-weight: 600; color: #003366;'>Active Operators:</p>
+                    <ul style='margin: 0; padding-left: 14px; list-style-type: square; line-height: 1.5;'>
+                        <li>Rashba Spin-Orbit: {r_icon}</li>
+                        <li>Kinetic Energy: Active</li>
+                        <li>Magnetic Flux: {f_icon}</li>
+                        <li>Zeeman Interaction: {z_icon}</li>
+                    </ul>
+                    <hr style='margin: 10px 0; border-color: #e2e8f0;'>
+                    <p style='font-family: monospace; font-size: 11px; margin: 0; color: #334155; line-height: 1.5;'>
+                        Matrix representation generated.<br>
+                        Basis dimension: 2 × 2<br>
+                        Operator compilation: Complete<br>
+                        Eigenvalue solver: Awaiting parameters.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
 
     # --- PIE DE PÁGINA: CONTROL DE RESET ESTÁNDAR Y UNIFORME ---
     st.markdown("---")

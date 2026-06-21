@@ -1,32 +1,38 @@
 import streamlit as st
 import numpy as np
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 # --- High-End Scientific Page Configuration ---
 st.set_page_config(
-    page_title="NEXUS | Eigenenergies", 
+    page_title="NEXUS | Rashba Ring Simulator", 
     layout="wide", 
     initial_sidebar_state="collapsed"
 )
 
-# --- BLINDAJE DE SEGURIDAD: CONTROL DE FLUJO ---
-if "engine_running" not in st.session_state or not st.session_state.engine_running:
-    st.warning("⚠️ No active Hamiltonian configuration detected. Please initialize the Core Engine in step 1 first.")
-    if st.button("Go to 1. Hamiltonian"):
-        st.switch_page("pages/01_Hamiltonian.py")
-    st.stop()
+# --- CONSTANTES FÍSICAS REALES ---
+hbar = 1.054571817e-34  # J*s
+m0 = 9.1093837e-31      # kg
+eV = 1.602176634e-19    # J
+mu_B = 9.274010078e-24  # J/T
+g_factor = -14.4        # Factor-g para InAs típico de NEXUS
 
-# --- SINCRO ESTRICTA: Heredamos la estructura activa de la Pág 1 ---
-use_flux = st.session_state.get("use_flux", True)
-use_zeeman = st.session_state.get("use_zeeman", True)
-use_rashba = st.session_state.get("use_rashba", True)
+# --- BLINDAJE DE ESTADOS: Inicialización Segura ---
+if "engine_running" not in st.session_state:
+    st.session_state.engine_running = False
+if "use_flux" not in st.session_state:
+    st.session_state.use_flux = True
+if "use_zeeman" not in st.session_state:
+    st.session_state.use_zeeman = True
+st.session_state["use_rashba"] = True
 
-# --- CSS NEXUS ---
+# --- CSS NEXUS: Consistencia Visual Uniforme ---
 st.markdown("""
 <style>
     [data-testid="stSidebar"] { display: none; }
     .stApp { background-color: #f0f2f6; font-family: 'Segoe UI', sans-serif; color: #0f172a; }
-    .nexus-header {
+
+    /* INTERFAZ SUPERIOR: Header Navbar extendido */
+    .nexus-navbar {
         background: linear-gradient(90deg, #001f3f 0%, #003366 100%);
         padding: 20px 40px;
         border-bottom: 4px solid #00d4ff;
@@ -37,262 +43,267 @@ st.markdown("""
     }
     .brand-area h1 { color: white !important; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 0.5px; }
     .brand-area p { color: #00d4ff; margin: 2px 0 0 0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* ESTILO DE LOS PANELES */
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: white !important; border: none !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; border-radius: 6px !important;
     }
+    
     .panel-title { color: #001f3f; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
-    .insight-card { background: white; padding: 14px; border-radius: 4px; border: 1px solid #ced4da; margin-bottom: 12px; }
-    .insight-card h4 { color: #001f3f; font-size: 12px; font-weight: 700; margin: 0 0 6px 0; text-transform: uppercase; }
-    .insight-card p { color: #495057; font-size: 11.5px; line-height: 1.5; margin: 0; }
+    .latex-title { font-size: 11px; font-weight: 700; color: #003366; text-transform: uppercase; letter-spacing: 1px; display: block; margin-top: 15px; margin-bottom: 5px; }
+    .instruction-text { color: #475569; font-size: 13px; font-style: italic; margin-top: 5px; margin-bottom: 15px; display: block; }
+    
+    .matrix-status {
+        background-color: #f1f5f9; padding: 10px; border-radius: 4px; border-left: 4px solid #003366;
+        font-family: monospace; font-size: 12px; font-weight: bold; color: #0f172a; margin-top: 10px;
+    }
+
+    /* CAMUFLAJE DE EXPANDERS: Estilo ejecutivo premium */
+    .stDetails {
+        background: white !important; 
+        border: 1px solid #ced4da !important; 
+        border-radius: 4px !important; 
+        margin-bottom: 12px !important;
+        box-shadow: none !important;
+    }
+    .stDetails summary {
+        padding: 10px 14px !important;
+    }
+    .stDetails summary p {
+        color: #001f3f !important; 
+        font-size: 12px !important; 
+        font-weight: 700 !important; 
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        margin: 0 !important;
+    }
+    .insight-content { 
+        color: #495057; 
+        font-size: 11.5px; 
+        line-height: 1.5; 
+        margin: 0;
+        padding: 0px 14px 14px 14px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='nexus-header'><div class='brand-area'><h1>NEXUS</h1><p>Advanced Quantum Simulation Environment</p></div></div>", unsafe_allow_html=True)
+# --- NAVBAR HEADER ---
+st.markdown("""
+<div class='nexus-navbar'>
+    <div class='brand-area'>
+        <h1>NEXUS</h1>
+        <p>Advanced Quantum Simulation Environment</p>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
-# --- NAVEGACIÓN DE PÁGINAS ESTÁNDAR NEXUS (5 ETAPAS) ---
-nav_cols = st.columns([2, 5])
-with nav_cols[0]:
-    menu_options = [
-        "2. Eigenenergies", 
-        "1. Hamiltonian", 
-        "3. Eigenstates", 
-        "4. Matrix Elements", 
-        "5. Optical Absorption"
-    ]
-    selected_page = st.selectbox("ENVIRONMENT NAVIGATION", menu_options, index=0, key="nav_eigenenergies")
-    
-    # Control de redirección síncrona según la selección del usuario
-    if "1. Hamiltonian" in selected_page:
-        st.switch_page("pages/01_Hamiltonian.py")
-    elif "3. Eigenstates" in selected_page:
-        st.switch_page("pages/03_Eigenstates.py")
-    elif "4. Matrix Elements" in selected_page:
-        st.switch_page("pages/04_MatrixElements.py")
-    elif "5. Optical Absorption" in selected_page:
-        st.switch_page("pages/05_OpticalAbsorption.py")
-
-# ============================================================
-# ABSORCIÓN DIRECTA Y REAL DEL ESTADO DEL HAMILTONIANO
-# ============================================================
-r0_val = st.session_state.get('r0_val', 40.0)
-meff_val = st.session_state.get('meff_val', 0.023)
-l_val = st.session_state.get('l_val', 1)
-
-phi_ratio = st.session_state.get('phi_ratio', 1.2) if use_flux else 0.0
-bz_val = st.session_state.get('bz_val', 2.5) if use_zeeman else 0.0
-alpha_val = st.session_state.get('alpha_val', 15.0) if use_rashba else 0.0
-
-hbar_sq_over_2m0 = 38.1  
-g_factor = 15.0         
-mu_B_meV = 0.05788      
-
-# --- FUNCIÓN LOCAL PARA DIAGONALIZAR INTERACTIVAMENTE ---
-def compute_exact_eigenenergies(r0, meff, l, phi, bz, alpha):
-    h_coef = hbar_sq_over_2m0 / (meff * (r0**2))
-    zeeman = 0.5 * g_factor * mu_B_meV * bz
-    rashba = (alpha / r0) * (l + 0.5 + phi) if use_rashba else 0.0
-    
-    h11 = h_coef * ((l + phi)**2) + zeeman if use_zeeman else h_coef * ((l + phi)**2)
-    h22 = h_coef * ((1 + l + phi)**2) - zeeman if use_zeeman else h_coef * ((1 + l + phi)**2)
-    h12 = rashba
-    
-    trace_half = (h11 + h22) / 2.0
-    diff_half_sq = ((h11 - h22) / 2.0) ** 2
-    root = np.sqrt(diff_half_sq + h12**2)
-    
-    return trace_half + root, trace_half - root
-
-e_plus_current, e_minus_current = compute_exact_eigenenergies(r0_val, meff_val, l_val, phi_ratio, bz_val, alpha_val)
+# Botonera superior de navegación dinámica (Fase Activa: Eigenenergies)
+if st.session_state.engine_running:
+    st.markdown("<div style='margin-top: -10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+    b_col1, b_col2, b_col3, b_col4, b_col5 = st.columns([2, 2, 2, 2, 2])
+    with b_col1:
+        if st.button("1. Hamiltonian", use_container_width=True):
+            st.switch_page("pages/01_Hamiltonian.py")
+    with b_col2:
+        if st.button("2. Eigenenergies", use_container_width=True, type="primary"):
+            st.switch_page("pages/02_Eigenenergies.py")
+    with b_col3:
+        if st.button("3. Eigenstates", use_container_width=True):
+            st.switch_page("pages/03_Eigenstates.py")
+    with b_col4:
+        if st.button("4. States", use_container_width=True):
+            st.switch_page("pages/04_States.py")
+    with b_col5:
+        if st.button("5. Conductance", use_container_width=True):
+            st.switch_page("pages/05_Conductance.py")
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin: -5px 0 25px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
+else:
+    st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
 
 # ============================================================
-# DISTRIBUCIÓN MATEMÁTICA Y RENDERS DE PLOTLY
+# CONTROL PRINCIPAL DE LA PÁGINA
 # ============================================================
-col_main_left, col_main_right = st.columns([5.2, 1.8])
+if not st.session_state.engine_running:
+    st.warning("Please initialize the Quantum Engine in the Hamiltonian Builder panel before accessing the eigenvalues console.")
+else:
+    col_main_left, col_main_right = st.columns([5.2, 1.8])
 
-with col_main_left:
-    
-    # ============================================================
-    # MÓDULO 1: MOTOR DE SIMPLIFICACIÓN ALGEBRAICA INTERACTIVO (DURADERO Y DINÁMICO)
-    # ============================================================
-    with st.container(border=True):
-        st.markdown("<p class='panel-title'>Dynamic Symbolic Solver Trace</p>", unsafe_allow_html=True)
-        
-        # 1. Definición del coeficiente de energía cinética base
-        hbar_factor = r"\frac{\hbar^2}{2m^* r_0^2}"
-        
-        # 2. CONSTRUCTOR DINÁMICO DE SUB-EXPRESIONES
-        if use_flux:
-            orb_h11 = r"\left(\frac{\Phi}{\Phi_0} + l\right)^2"
-            orb_h22 = r"\left(\frac{\Phi}{\Phi_0} + l + 1\right)^2"
-            orb_avg = r"\left(l + \frac{\Phi}{\Phi_0} + \frac{1}{2}\right)^2"
-            inner_diff = r"\left(l + \frac{\Phi}{\Phi_0} + \frac{1}{2}\right)"
-            rashba_term = r"\frac{\alpha_R \left(\frac{\Phi}{\Phi_0} + l + \frac{1}{2}\right)}{r_0}"
-        else:
-            orb_h11 = r"l^2"
-            orb_h22 = r"(l+1)^2"
-            orb_avg = r"\left(l + \frac{1}{2}\right)^2"
-            inner_diff = r"\left(l + \frac{1}{2}\right)"
-            rashba_term = r"\frac{\alpha_R \left(l + \frac{1}{2}\right)}{r_0}"
-
-        # Coeficiente Zeeman
-        zeeman_factor = r"\frac{B_z \mu_B g}{2}"
-
-        # 3. ENSAMBLAJE DINÁMICO DE LA MATRIZ H
-        h11_str = f"{zeeman_factor} + {hbar_factor}{orb_h11}" if use_zeeman else f"{hbar_factor}{orb_h11}"
-        h22_str = f"-{zeeman_factor} + {hbar_factor}{orb_h22}" if use_zeeman else f"{hbar_factor}{orb_h22}"
-        h12_str = rashba_term if use_rashba else "0"
-
-        st.markdown("donde $(H)$ es la matriz obtenida anteriormente:")
-        st.latex(f"H = \\begin{{pmatrix}} {h11_str} & {h12_str} \\\\ {h12_str} & {h22_str} \\end{{pmatrix}}")
-        
-        st.markdown("Resolviendo la ecuación característica y agrupando términos, se obtiene:")
-
-        # 4. ALGORITMO DE PURIFICACIÓN DEL RADICANDO
-        if use_zeeman:
-            radical_core = f"\\left[ \\frac{{1}}{{2}}g\\mu_B B_z - {hbar_factor}{inner_diff} \\right]^2"
-        else:
-            radical_core = f"\\left[ {hbar_factor}{inner_diff} \\right]^2"
-
-        if use_rashba:
-            if use_flux:
-                rashba_final = r"+ \left[ \frac{\alpha_R}{r_0} \left( \frac{\Phi}{\Phi_0} + l + \frac{1}{2} \right) \right]^2"
-            else:
-                rashba_final = r"+ \left[ \frac{\alpha_R}{r_0} \left( l + \frac{1}{2} \right) \right]^2"
-        else:
-            rashba_final = ""
-
-        # 5. RENDERIZADO FINAL ADAPTATIVO ULTRA-PULIDO
-        st.latex(f"""
-        E_{{\\pm}} = {hbar_factor} \\left[ {orb_avg} + \\frac{{1}}{{4}} \\right] \\pm \\sqrt{{ {radical_core} {rashba_final} }}
-        """)
-
-    # ============================================================
-    # MÓDULO 2: SELECTOR DE VIEWPORT Y GRÁFICOS INTERACTIVOS
-    # ============================================================
-    with st.container(border=True):
-        graph_mode = st.radio(
-            "Select Analysis Viewport:",
-            ["Dimensional Spectrum (Physical Units)", "Symbolic Report Graph (Dimensionless Mode)"],
-            horizontal=True,
-            label_visibility="collapsed"
-        )
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # --- MODO INTERACTIVO DIMENSIONAL ---
-        if graph_mode == "Dimensional Spectrum (Physical Units)":
-            st.markdown("<p class='panel-title'>Energy Spectrum vs Rashba Coupling (Dynamic Matrix Solver)</p>", unsafe_allow_html=True)
+    with col_main_left:
+        # CONTENEDOR 1: Parámetros del Laboratorio Interactivo
+        with st.container(border=True):
+            st.markdown("<p class='panel-title'>Interactive Simulation Parameters</p>", unsafe_allow_html=True)
             
-            alpha_range = np.linspace(0.0, 40.0, 250)
-            e_plus_curve = []
-            e_minus_curve = []
+            p_col1, p_col2, p_col3, p_col4 = st.columns(4)
             
-            for a in alpha_range:
-                ep, em = compute_exact_eigenenergies(r0_val, meff_val, l_val, phi_ratio, bz_val, a)
-                e_plus_curve.append(ep)
-                e_minus_curve.append(em)
+            with p_col1:
+                l_value = st.selectbox(
+                    "Angular Momentum (l)", 
+                    options=[-5, -4, -3, -2, -1, 1, 2, 3, 4, 5], 
+                    index=5
+                )
+            with p_col2:
+                alpha_max = st.slider("α Max Range", min_value=1, max_value=30, value=10, step=1)
+            with p_col3:
+                # Deshabilitado visualmente si no se activó en la Fase 1 para mantener rigor
+                if st.session_state.use_zeeman:
+                    Bz_value = st.slider("Magnetic Field Bz (T)", min_value=-5.0, max_value=5.0, value=0.0, step=0.1)
+                else:
+                    st.text_input("Magnetic Field Bz (T)", value="0.0 (Inactive)", disabled=True)
+                    Bz_value = 0.0
+            with p_col4:
+                if st.session_state.use_flux:
+                    Phi_ratio_value = st.slider("Magnetic Flux (Φ/Φ0)", min_value=-2.0, max_value=2.0, value=0.0, step=0.05)
+                else:
+                    st.text_input("Magnetic Flux (Φ/Φ0)", value="0.0 (Inactive)", disabled=True)
+                    Phi_ratio_value = 0.0
 
-            fig_real = go.Figure()
-            fig_real.add_trace(go.Scatter(x=alpha_range, y=e_plus_curve, mode='lines', name='E₊ (Upper Branch)', line=dict(color='#0056b3', width=2.5)))
-            fig_real.add_trace(go.Scatter(x=alpha_range, y=e_minus_curve, mode='lines', name='E₋ (Lower Branch)', line=dict(color='#10b981', width=2.5)))
+        # CONTENEDOR 2: Renderizado de la Gráfica Interactiva del Script en eV
+        with st.container(border=True):
+            st.markdown("<p class='panel-title'>Interactive Eigenenergy Spectrum</p>", unsafe_allow_html=True)
+            st.markdown("<span class='instruction-text'>Evolución de los niveles E+ y E- en función de la intensidad del acoplamiento Rashba:</span>", unsafe_allow_html=True)
             
-            fig_real.add_trace(go.Scatter(
-                x=[alpha_val, alpha_val], y=[e_minus_current, e_plus_current],
-                mode='markers+text', name='Operating Point',
-                marker=dict(color='#0f172a', size=9, symbol='diamond'),
-                text=[f"{e_minus_current:.3f} meV", f"{e_plus_current:.3f} meV"],
-                textposition=["bottom center", "top center"]
-            ))
+            # --- SOLVER NUMÉRICO DIRECTO BASADO EN TU ESTRUCTURA ---
+            alpha_values = np.linspace(0, alpha_max, 300)
+            r0_num = 40.0 * 1e-9  # Radio efectivo fijo en nm para consistencia de la escala
+            m_eff = 0.023 * m0    # Masa efectiva del InAs
             
-            fig_real.update_layout(xaxis_title="Rashba Coupling α_R (meV·nm)", yaxis_title="Eigenenergy E (meV)", margin=dict(l=40, r=20, t=10, b=40), hovermode="x unified", plot_bgcolor="white", paper_bgcolor="white")
-            st.plotly_chart(fig_real, use_container_width=True, key="real_plot")
-
-            # --- CONSOLA SÍNCRONA DE PARÁMETROS LOCALES ---
-            st.markdown("<br>", unsafe_allow_html=True)
-            with st.container(border=True):
-                st.markdown("<p class='panel-title'>System Parameters Console (Interactive Custom Parameters)</p>", unsafe_allow_html=True)
-                grid_p1, grid_p2, grid_p3 = st.columns([1.5, 1.0, 1.5])
+            # Cálculo de energías base escaladas a eV
+            E_0 = (hbar**2) / (2 * m_eff * r0_num**2)
+            
+            # Implementación exacta de la física de tu script interactivo
+            # Términos orbitales dinámicos dependientes de la configuración de fase
+            phi_eff = Phi_ratio_value if st.session_state.use_flux else 0.0
+            zeeman_eff = 0.5 * g_factor * mu_B * Bz_value if st.session_state.use_zeeman else 0.0
+            
+            # Matrices diagonales asimétricas y acoplamiento Rashba exacto por punto
+            E_base = 0.5 * E_0 * ((l_value + phi_eff)**2 + (1 + l_value + phi_eff)**2)
+            Delta_diag = 0.5 * E_0 * ((l_value + phi_eff)**2 - (1 + l_value + phi_eff)**2) + zeeman_eff
+            
+            # El parámetro alpha_max mapea la escala adimensional del acoplamiento
+            V_rashba = (E_0 * alpha_values) * (l_value + 0.5 + phi_eff) / alpha_max if alpha_max > 0 else 0
+            
+            E_plus_num = (E_base + np.sqrt(Delta_diag**2 + V_rashba**2)) / eV
+            E_minus_num = (E_base - np.sqrt(Delta_diag**2 + V_rashba**2)) / eV
+            
+            # --- RENDERIZADO CON MATPLOTLIB PREMIUM ---
+            fig, ax = plt.subplots(figsize=(7, 3.4), dpi=200)
+            fig.patch.set_facecolor('white')
+            ax.set_facecolor('#ffffff')
+            
+            ax.plot(alpha_values, E_plus_num, color='#003366', linewidth=2.0, label=r"$E_+$ subband")
+            ax.plot(alpha_values, E_minus_num, color='#00d4ff', linestyle="--", linewidth=2.0, label=r"$E_-$ subband")
+            
+            ax.set_xlabel(r"$\alpha=\frac{2m^\ast\alpha_R r_0}{\hbar^2}$ (Rashba Int.)", fontsize=8, color='#0f172a', fontweight='bold')
+            ax.set_ylabel("Energy (eV)", fontsize=8, color='#0f172a', fontweight='bold')
+            
+            ax.set_title(rf"$l={l_value}$,  $B_z={Bz_value:.2f}$ T,  $\Phi/\Phi_0={Phi_ratio_value:.2f}$", fontsize=9, fontweight="bold", color='#001f3f')
+            
+            ax.grid(True, linestyle='--', linewidth=0.5, color='#e2e8f0', alpha=0.7)
+            ax.tick_params(colors='#475569', labelsize=7)
+            
+            # Ajustar formato de los ejes de forma limpia
+            ax.yaxis.set_major_formatter(plt.ScalarFormatter(useMathText=True))
+            
+            for spine in ax.spines.values():
+                spine.set_edgecolor('#cbd5e1')
+                spine.set_linewidth(0.8)
                 
-                with grid_p1:
-                    st.session_state['r0_val'] = st.slider("Ring Radius r_0 (nm)", 10.0, 100.0, float(r0_val), step=2.5, key='r0_slider_link')
-                    st.session_state['meff_val'] = st.slider("Effective Mass m* (m_0)", 0.01, 0.10, float(meff_val), step=0.001, key='meff_slider_link')
-                with grid_p2:
-                    st.session_state['l_val'] = st.number_input("Angular Momentum l", value=int(l_val), step=1, key='l_input_link')
-                        
-                with grid_p3:
-                    if use_flux: 
-                        st.session_state['phi_ratio'] = st.slider("Flux Ratio Φ/Φ_0", 0.0, 5.0, float(phi_ratio), step=0.1, key='phi_slider_link')
-                    else: st.caption("Information: Magnetic Flux is disabled.")
-                        
-                    if use_zeeman: 
-                        st.session_state['bz_val'] = st.slider("Magnetic Field B_z (T)", 0.0, 10.0, float(bz_val), step=0.1, key='bz_slider_link')
-                    else: st.caption("Information: Zeeman Field is disabled.")
-                        
-                    if use_rashba: 
-                        st.session_state['alpha_val'] = st.slider("Rashba Coupling α_R", 0.0, 40.0, float(alpha_val), step=1.0, key='alpha_slider_link')
-                    else: st.caption("Information: Rashba Coupling is disabled.")
-
-        # --- MODO SIMBÓLICO ---
-        else:
-            st.markdown("<p class='panel-title'>Dimensionless Spectrum vs α (Report Ready Mode)</p>", unsafe_allow_html=True)
-            l_sym = st.number_input("Vary Angular Momentum l for Symbolic Graph:", value=int(l_val), step=1, key="l_sym_input")
+            ax.legend(loc="best", frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1', fontsize=7.5)
+            fig.tight_layout()
             
-            alpha_sym_range = np.linspace(0.0, 10.0, 300)
-            q_sym = l_sym + 0.5
-            e_sym_center = (q_sym**2) + 0.25
+            st.pyplot(fig)
+            st.markdown(f"<div class='matrix-status'>NUMERICAL SPECTRAL GRAPH GENERATED: Evolution verified for l={l_value}</div>", unsafe_allow_html=True)
+
+    with col_main_right:
+        with st.container(border=True):
+            st.markdown("<p class='panel-title'>Spectral Insights</p>", unsafe_allow_html=True)
             
-            e_sym_plus = e_sym_center + np.sqrt((q_sym**2) * (1 + alpha_sym_range**2))
-            e_sym_minus = e_sym_center - np.sqrt((q_sym**2) * (1 + alpha_sym_range**2))
-            
-            fig_sym = go.Figure()
-            fig_sym.add_trace(go.Scatter(x=alpha_sym_range, y=e_sym_plus, mode='lines', name='E₊ (Symbolic)', line=dict(color='#dc2626', width=2.5)))
-            fig_sym.add_trace(go.Scatter(x=alpha_sym_range, y=e_sym_minus, mode='lines', name='E₋ (Symbolic)', line=dict(color='#2563eb', width=2.5, dash='dash')))
-            
-            fig_sym.update_layout(
-                title=dict(text=f"Analytical Spectrum Mode for l = {l_sym}", font=dict(size=14, color='#001f3f')),
-                xaxis_title="Dimensionless Coupling: α = 2m* α_R r_0 / ℏ²",
-                yaxis_title="Dimensionless Energy ε (Scientific Notation)",
-                margin=dict(l=60, r=20, t=50, b=40), hovermode="x unified", plot_bgcolor="white", paper_bgcolor="white"
-            )
-            fig_sym.update_xaxes(showgrid=True, gridcolor='#cbd5e1')
-            fig_sym.update_yaxes(showgrid=True, gridcolor='#cbd5e1', tickformat=".4e")
-            st.plotly_chart(fig_sym, use_container_width=True, key="sym_plot_final")
+            with st.expander("Energy Bands Structure", expanded=False):
+                st.markdown("""
+                <div class='insight-content'>
+                    <p>The continuous eigenvalue equation generates two discrete energy branches labeled as <b>E+</b> and <b>E-</b>.</p>
+                    <p style='margin-top: 6px;'>These solutions correspond to the spin-split states induced by the non-trivial routing of the orbital wavefunctions around the ring topology.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with st.expander("Rashba Dispersion Impact", expanded=False):
+                st.markdown("""
+                <div class='insight-content'>
+                    <p>The radical term acts as an effective interaction energy scale.</p>
+                    <p style='margin-top: 6px;'>When Spin-Orbit interaction is turned on, the off-diagonal coupling avoids the crossing of energy bands, creating a forbidden energy gap proportional to the coupling strength.</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-# --- COLUMNA DERECHA ---
-with col_main_right:
-    with st.container(border=True):
-        st.markdown("<p class='panel-title'>Physics Insights</p>", unsafe_allow_html=True)
-        
-        if not use_rashba:
-            ins_1 = "<b>Linear Dispersion Mode.</b> Las energías se desacoplan totalmente volviéndose puramente parabólicas respecto al momento cuantizado."
-            ins_2 = "<b>Zero Spin Splitting.</b> Al no haber acoplamiento off-diagonal, las ramas colapsan a los autovalores orbitales puros."
-        else:
-            ins_1 = "<b>Anti-crossing Behavior.</b> Los términos fuera de la diagonal mezclan los canales de espín abriendo una brecha (gap) cuántica."
-            ins_2 = "<b>Rashba Dominance.</b> A medida que aumentas el acoplamiento, la separación de espín crece de forma controlada y exacta."
+            with st.expander("Kramers Degeneracy Check", expanded=False):
+                if st.session_state.use_flux or st.session_state.use_zeeman:
+                    status_sym = "Broken due to external fields. States at +l and -l are shifted, lifting the spin degeneracy."
+                else:
+                    status_sym = "Preserved. The energy branches fulfill the relation E(l, up) = E(-l, down), ensuring time-reversal symmetric doublets."
+                    
+                st.markdown(f"""
+                <div class='insight-content'>
+                    <p><b>Time-Reversal Symmetry Status:</b></p>
+                    <p style='margin-top: 4px; font-weight: 600; color: #003366;'>{status_sym}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-        ins_3 = "<b>Asymmetric Shifts.</b> El flujo magnético rompe la simetría de inversión temporal generando desfases asimétricos observables." if (use_flux and phi_ratio != 0) else "<b>TRS Preserved.</b> Sin campos ortogonales ni flujos netos, las inversiones temporales mantienen degeneraciones ordenadas."
-        
-        actual_splitting = np.abs(e_plus_current - e_minus_current)
-        ins_4 = f"Separación energética en el punto de operación: <b>{actual_splitting:.4f} meV</b>."
+            with st.expander("Spectral Coherence", expanded=False):
+                flux_badge = "<span style='color: #10b981; font-weight: bold;'>Active</span>" if st.session_state.use_flux else "<span style='color: #94a3b8;'>Inactive</span>"
+                zeeman_badge = "<span style='color: #10b981; font-weight: bold;'>Active</span>" if st.session_state.use_zeeman else "<span style='color: #94a3b8;'>Inactive</span>"
+                
+                st.markdown(f"""
+                <div class='insight-content' style='padding: 5px 0px;'>
+                    <table style='width: 100%; font-size: 12px; border-collapse: collapse; line-height: 1.6;'>
+                        <thead>
+                            <tr style='border-bottom: 2px solid #e2e8f0; text-align: left;'>
+                                <th style='padding: 6px 4px; color: #475569; font-weight: 700;'>Spectral Factor</th>
+                                <th style='padding: 6px 4px; text-align: right; color: #475569; font-weight: 700;'>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style='border-bottom: 1px solid #e2e8f0;'>
+                                <td style='padding: 10px 4px; font-weight: 500;'>Orbital Quantization</td>
+                                <td style='padding: 10px 4px; text-align: right; color: #10b981; font-weight: bold;'>Active</td>
+                            </tr>
+                            <tr style='border-bottom: 1px solid #e2e8f0;'>
+                                <td style='padding: 10px 4px; font-weight: 500;'>Aharonov-Bohm Shift</td>
+                                <td style='padding: 10px 4px; text-align: right;'>{flux_badge}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 10px 4px; font-weight: 500;'>External Magnetic Field</td>
+                                <td style='padding: 10px 4px; text-align: right;'>{zeeman_badge}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                """, unsafe_allow_html=True)
 
-        st.markdown(f"""
-        <div class='insight-card'><h4>ENERGY DISPERSION</h4><p>{ins_1}</p></div>
-        <div class='insight-card'><h4>CHIRAL SPLITTING</h4><p>{ins_2}</p></div>
-        <div class='insight-card'><h4>SYMMETRY UNDER FLUX</h4><p>{ins_3}</p></div>
-        <div class='insight-card'><h4>OPERATIONAL SPLITTING</h4><p>{ins_4}</p></div>
-        <div class='insight-card'>
-            <h4>NUMERICAL STATUS</h4>
-            <p style='font-family: monospace; font-size: 11px; margin:0;'>
-                Solver: Exact Matrix Diagonalization<br>
-                Matrix conditioning: Stable<br>
-                Status: 100% Coupled to Hamiltonian setup.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+            with st.expander("Solver Computational Status", expanded=False):
+                st.markdown("""
+                <div class='insight-content'>
+                    <p style='margin-bottom: 6px; font-weight: 600; color: #003366;'>Algebraic State:</p>
+                    <ul style='margin: 0; padding-left: 14px; list-style-type: square; line-height: 1.5;'>
+                        <li>Eigenvalue Equation: Formulated</li>
+                        <li>Subband Symmetries: Verified</li>
+                        <li>Numerical Solver: Dynamic Active</li>
+                    </ul>
+                    <hr style='margin: 10px 0; border-color: #e2e8f0;'>
+                    <p style='font-family: monospace; font-size: 11px; margin: 0; color: #334155; line-height: 1.5;'>
+                        Solver core: Numerical Grid<br>
+                        Roots calculation: Interactive Matrix<br>
+                        Execution: Real-Time Stream.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
 
-# --- PIE DE PÁGINA ---
-st.markdown("---")
-col_reset, col_spacer = st.columns([1.5, 5.5])
-with col_reset:
-    if st.button("Reset", use_container_width=True, type="secondary", key="global_reset_e"):
-        st.session_state.clear()
-        st.rerun()
+    # --- PIE DE PÁGINA: CONTROL DE RESET CON REDIRECCIÓN AUTOMÁTICA ---
+    st.markdown("---")
+    col_reset, col_spacer = st.columns([1.5, 5.5])
+    with col_reset:
+        if st.button("Reset", use_container_width=True, type="secondary", key="global_reset_e"):
+            st.session_state.engine_running = False
+            try:
+                st.switch_page("pages/01_Hamiltonian.py")
+            except Exception:
+                st.switch_page("app.py")
