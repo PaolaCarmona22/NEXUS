@@ -5,7 +5,7 @@ from matplotlib.ticker import FuncFormatter
 
 # --- High-End Scientific Page Configuration ---
 st.set_page_config(
-    page_title="NEXUS | Rashba Ring Simulator", 
+    page_title="NEXUS | Eigenenergies Simulator", 
     layout="wide", 
     initial_sidebar_state="collapsed"
 )
@@ -83,17 +83,13 @@ st.markdown("""
 # Dynamic Top Navigation Panel
 if st.session_state.engine_running:
     st.markdown("<div style='margin-top: -10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
-    b_col1, b_col2, b_col3, b_col4, b_col5 = st.columns([2, 2, 2, 2, 2])
+    b_col1, b_col2, b_col3, b_col4 = st.columns(4)
     with b_col1:
         if st.button("1. Hamiltonian", use_container_width=True): st.switch_page("pages/01_Hamiltonian.py")
     with b_col2:
         if st.button("2. Eigenenergies", use_container_width=True, type="primary"): st.switch_page("pages/02_Eigenenergies.py")
     with b_col3:
         if st.button("3. Eigenstates", use_container_width=True): st.switch_page("pages/03_Eigenstates.py")
-    with b_col4:
-        if st.button("4. States", use_container_width=True): st.switch_page("pages/04_States.py")
-    with b_col5:
-        if st.button("5. Conductance", use_container_width=True): st.switch_page("pages/05_Conductance.py")
     st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("<hr style='margin: -5px 0 25px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
 else:
@@ -102,14 +98,12 @@ else:
 if not st.session_state.engine_running:
     st.warning("Please initialize the Quantum Engine in the Hamiltonian Builder panel before accessing the eigenvalues console.")
 else:
-    # Verificación dinámica de campos activos
     has_flux = st.session_state.use_flux and st.session_state.phi_ratio != 0.0
     has_zeeman = st.session_state.use_zeeman and st.session_state.bz_val != 0.0
-    
     is_general_case = has_flux or has_zeeman
     case_title = "General Regime (Rashba + Flux + Zeeman)" if is_general_case else "Base Regime (Rashba Only - Recovered)"
 
-    # Diseñamos las columnas del laboratorio científico
+    # --- MAIN ASYMMETRIC GRID WORKSPACE ---
     col_main_left, col_main_right = st.columns([5.2, 1.8])
 
     with col_main_left:
@@ -122,11 +116,8 @@ else:
                 alpha_max_slider = st.slider("α Max Range", min_value=1.0, max_value=30.0, value=10.0, step=1.0)
             with p_col2:
                 l_options = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]
-                try:
-                    default_index = l_options.index(st.session_state.l_val)
-                except ValueError:
-                    default_index = 6
-                
+                try: default_index = l_options.index(st.session_state.l_val)
+                except ValueError: default_index = 6
                 l_selected = st.selectbox("Quantum Number (l)", options=l_options, index=default_index)
                 st.session_state.l_val = l_selected
             with p_col3:
@@ -161,7 +152,7 @@ else:
                 )
             st.latex(E_final_latex)
 
-            # --- Physical Constants ---
+            # Mathematical Physical Solvers
             hbar_num = 1.05457e-34
             m_e = 9.10938e-31
             m_eff = st.session_state.meff_val * m_e
@@ -184,23 +175,18 @@ else:
 
             formatter = FuncFormatter(scientific_formatter)
 
-            # --- Main Real-Time Graph Generation ---
             alpha_space = np.linspace(0.0, alpha_max_slider, 300)
             l_actual = st.session_state.l_val
 
-            fig, ax = plt.subplots(figsize=(9, 4.8), dpi=200)
+            fig, ax = plt.subplots(figsize=(11, 4.5), dpi=200)
             fig.patch.set_facecolor('white')
             ax.set_facecolor('#ffffff')
             
-            # CORRECCIÓN DE ESCALA: Acoplamiento perfecto al límite asintótico base
             def compute_bands(l_val):
                 f_ratio = st.session_state.phi_ratio if st.session_state.use_flux else 0.0
                 q_eff = l_val + f_ratio + 0.5
                 t1 = q_eff**2 + 0.25
-                
-                # Sincronización dimensional exacta con el caso base
                 alpha_energy = alpha_space * p_factor
-                
                 t2 = np.sqrt((Z_factor - p_factor * q_eff)**2 + (alpha_energy * q_eff)**2)
                 return p_factor * t1 + t2, p_factor * t1 - t2
 
@@ -209,7 +195,6 @@ else:
             ax.plot(alpha_space, E_plus_num, label=r"$E_+$ Subband", color='#e11d48', linewidth=2.5)
             ax.plot(alpha_space, E_minus_num, label=r"$E_-$ Subband", color='#003366', linestyle='--', linewidth=2.5)
             
-            # Real-Time Gap Mapping
             mid_idx = len(alpha_space) // 2
             gap_x = alpha_space[mid_idx]
             gap_y_minus = E_minus_num[mid_idx]
@@ -237,58 +222,41 @@ else:
             plt.tight_layout()
             st.pyplot(fig)
             
-            # Coherence Status Message
             status_msg = f"LIVE MATRIX SOLVER RUNNING | r0={st.session_state.r0_val}nm | m*={st.session_state.meff_val}m0"
             st.markdown(f"<div class='matrix-status'>FORTRAN ENGINE COHERENCE STATUS: {status_msg}</div>", unsafe_allow_html=True)
 
     with col_main_right:
-        # PANEL 3: Scientific Physical Insights
+        # PANEL 3: System Physical Insights & Diagnostics
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Physical Insights</p>", unsafe_allow_html=True)
             
+            # CORREGIDO: Ahora 'Determinant Analysis' espera el click del usuario al entrar cerrado (expanded=False)
             with st.expander("Determinant Analysis", expanded=False):
                 if is_general_case:
-                    det_text = """The secular matrix determinant reveals an asymmetric coupling. The square root term 
-                    contains the gauge field parameter <code>B_z</code> directly competing against the effective angular 
-                    momentum <code>l + Φ/Φ0</code>. This competitive coupling shifts the energy minimum, completely lifting the even parity symmetry."""
+                    det_text = "The secular matrix determinant reveals an asymmetric coupling. The square root term contains the gauge field parameter B_z directly competing against the effective angular momentum."
                 else:
-                    det_text = """In the base configuration (or when gauge fields are zeroed out), the secular equation reduces to a symmetric product. 
-                    The mathematical root term displays a clean, linear scaling relative to 
-                    the Rashba interaction intensity, entirely free from external field distortions."""
+                    det_text = "In the base configuration, the secular equation reduces to a symmetric product displaying a clean, linear scaling relative to the Rashba interaction intensity."
                 st.markdown(f"<div class='insight-content'><p>{det_text}</p></div>", unsafe_allow_html=True)
-                
+
             with st.expander("Subband Curve Evolution", expanded=False):
                 st.markdown("""
                 <div class='insight-content'>
-                    <p>As the spin-orbit coupling parameter <b>α</b> increases, a progressive hyperbolic separation (spin-splitting) occurs between the <b>E+</b> and <b>E-</b> branches.</p>
-                    <p style='margin-top: 5px;'>In the base regime, the splitting remains perfectly symmetric relative to the baseline kinetic energy. In the general regime, the external Zeeman field warps the asymptotic limits.</p>
+                    <p>As the spin-orbit coupling parameter α increases, a progressive hyperbolic separation occurs between the branches.</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-            with st.expander("Real Confinement Physics", expanded=False):
-                if is_general_case:
-                    m_text = f"<b>Effective Mass Confinement ({st.session_state.meff_val} * m_0):</b> Utilizing the restricted effective mass precisely models a high-mobility semiconductor channel, lifting the energy scale into a physically relevant regime compared to a free electron structure."
-                else:
-                    m_text = f"<b>Free Electron Baseline Mass ({st.session_state.meff_val} * m_0):</b> The basic solver code deploys the standard fundamental resting mass of an electron to map out the ideal quantum ring mechanics before implementing complex doping models."
-                st.markdown(f"<div class='insight-content'><p>{m_text}</p></div>", unsafe_allow_html=True)
-
             with st.expander("Quantum Symmetry Structure", expanded=False):
                 if is_general_case:
-                    sym_status = "<b>Broken Time-Reversal Symmetry:</b> The concurrent application of a non-zero magnetic flux and Zeeman splitting eliminates the standard Kramers degeneracy. The resulting spectrum features highly polarized, asymmetric spin pathways."
+                    sym_status = "<b>Broken Time-Reversal Symmetry:</b> Concurrent magnetic flux and Zeeman splitting eliminate the standard Kramers degeneracy."
                 else:
-                    sym_status = "<b>Preserved Spatial Parity Symmetry:</b> Without gauge fields or localized fields breaking the quantum phase coherence, the eigenstates preserve tight chiral symmetries across both analytic branches."
+                    sym_status = "<b>Preserved Spatial Parity Symmetry:</b> Without gauge fields breaking phase coherence, eigenstates preserve tight chiral symmetries."
                 st.markdown(f"<div class='insight-content'><p>{sym_status}</p></div>", unsafe_allow_html=True)
 
-# --- PIE DE PÁGINA GLOBAL INTERACTIVO ---
+# --- GLOBAL INTERACTIVE BOTTOM FOOTER ---
 st.markdown("---")
 col_btn_reset, col_btn_spacer = st.columns([1.5, 8.5])
 with col_btn_reset:
     if st.button("Reset", use_container_width=True, type="secondary", key="nexus_global_reset"):
         st.session_state.engine_running = False
-        try:
-            st.switch_page("pages/01_Hamiltonian.py")
-        except Exception:
-            try:
-                st.switch_page("app.py")
-            except Exception:
-                st.rerun()
+        try: st.switch_page("pages/01_Hamiltonian.py")
+        except Exception: st.rerun()

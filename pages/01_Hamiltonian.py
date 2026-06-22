@@ -99,10 +99,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Botonera superior de navegación dinámica (Solo se muestra si el motor está corriendo)
+# Botonera superior de navegación dinámica (CORREGIDO: Se eliminó '4. States' y ahora es '4. Conductance')
 if st.session_state.engine_running:
     st.markdown("<div style='margin-top: -10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
-    b_col1, b_col2, b_col3, b_col4, b_col5 = st.columns([2, 2, 2, 2, 2])
+    b_col1, b_col2, b_col3, b_col4 = st.columns([2.5, 2.5, 2.5, 2.5])
     with b_col1:
         if st.button("1. Hamiltonian", use_container_width=True, type="primary"):
             st.switch_page("pages/01_Hamiltonian.py")
@@ -112,12 +112,6 @@ if st.session_state.engine_running:
     with b_col3:
         if st.button("3. Eigenstates", use_container_width=True):
             st.switch_page("pages/03_Eigenstates.py")
-    with b_col4:
-        if st.button("4. States", use_container_width=True):
-            st.switch_page("pages/04_States.py")
-    with b_col5:
-        if st.button("5. Conductance", use_container_width=True):
-            st.switch_page("pages/05_Conductance.py")
     st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("<hr style='margin: -5px 0 25px 0; border-color: #cbd5e1;'>", unsafe_allow_html=True)
 else:
@@ -173,7 +167,6 @@ if not st.session_state.engine_running:
         with st.container(border=True):
             st.markdown("<p class='panel-title'>Physics Insights</p>", unsafe_allow_html=True)
             
-            # MODIFICADO: expanded=False para que inicie cerrado por defecto
             with st.expander("Hamiltonian Operator", expanded=False):
                 st.markdown("""
                 <div class='insight-content'>
@@ -290,7 +283,7 @@ else:
                 </div>
                 """, unsafe_allow_html=True)
 
-            # --- EXPANDER 4: DETECTED PHYSICS (TABLA UNIFORME CONFIGURADA) ---
+            # --- EXPANDER 4: DETECTED PHYSICS ---
             with st.expander("Detected Physics", expanded=False):
                 flux_badge = "<span style='color: #10b981; font-weight: bold;'>Active</span>" if st.session_state.use_flux else "<span style='color: #94a3b8;'>Inactive</span>"
                 zeeman_badge = "<span style='color: #10b981; font-weight: bold;'>Active</span>" if st.session_state.use_zeeman else "<span style='color: #94a3b8;'>Inactive</span>"
